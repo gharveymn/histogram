@@ -1,8 +1,8 @@
 function [counts,edges,binidx] = histcounts (data, varargin)
-  
+ 
   MAXBINS = 65536;
 
-  validateattributes (data, {"numeric", "logical"}, {"real"}, "histcounts", 1);
+  validateattributes (data, {"numeric", "logical"}, {"real"}, "histcounts");
   isedgestrans = false;
   
   if (nargin < 3)
@@ -10,14 +10,14 @@ function [counts,edges,binidx] = histcounts (data, varargin)
     if (nargin == 2 && ! isscalar (varargin{1}))
       currin = varargin{1};
       validateattributes (currin, {"numeric", "logical"}, {"vector",...
-                         "nonempty", "real", "nondecreasing"}, "histcounts", 2);
+                         "nonempty", "real", "nondecreasing"}, "histcounts");
       if (iscolumn (currin))
         edges = currin.';
         isedgestrans = true;
       else
         edges = currin;
       endif
-    else      
+    else
       if (! isfloat (data))
         datacol = data(:);
         datamin = double (min (datacol));
@@ -25,7 +25,7 @@ function [counts,edges,binidx] = histcounts (data, varargin)
       else
         datacol = data(isfinite(data));
         datamin = min (datacol);
-        datamax = max (datacol);       
+        datamax = max (datacol);
       endif
       
       if (nargin == 1)
@@ -33,7 +33,7 @@ function [counts,edges,binidx] = histcounts (data, varargin)
       else
         currin = varargin{1};
         validateattributes (currin, {"numeric", "logical"}, {"integer",...
-                            "positive"}, "histcounts", 2);
+                            "positive"}, "histcounts");
         datarange = datamax - datamin;
         numbins   = double (currin);
         edges = pickbins (datamin, datamax, numbins, datarange/numbins);
@@ -120,9 +120,9 @@ function [counts,edges,binidx] = histcounts (data, varargin)
 
   ## TODO histcountsmex in octfile
   if (nargout <= 2)
-    counts = histcountsmex (data, edges);
+    counts = histcountsnaive (data, edges);
   else
-    [counts, binidx] = histcountsmex (data, edges);
+    [counts, binidx] = histcountsnaive (data, edges);
   endif
 
   if (! isempty (ins))
@@ -148,7 +148,8 @@ endfunction
 function opts = parseinput (input)
   
   opts = struct ("NumBins", [], "BinEdges", [], "BinLimits", [],...
-                 "BinWidth", [], "Normalization", "count", "BinMethod", "auto");
+                 "BinWidth", [], "Normalization", "count",...
+                 "BinMethod", "auto");
   
   idx = 1;
   currin = input{idx};
@@ -183,7 +184,7 @@ function opts = parseinput (input)
       case "NumBins"
         validateattributes (value, {"numeric", "logical"}, {"scalar",...
                             "integer", "positive"}, "NumBins", j + 2);
-        if (! isempty (opts.BinEdges)
+        if (! isempty (opts.BinEdges))
           error ("histcounts: invalid mixture of binning inputs");
         endif
         opts.NumBins   =  value;
@@ -203,7 +204,7 @@ function opts = parseinput (input)
       case "BinWidth"
         validateattributes (value, {"numeric", "logical"}, {"scalar", "real",...
                             "positive", "finite"}, "BinWidth", j + 2);
-        if (! isempty (opts.BinEdges)
+        if (! isempty (opts.BinEdges))
           error ("histcounts: invalid mixture of binning inputs");
         endif
         opts.BinWidth  = value;
@@ -213,7 +214,7 @@ function opts = parseinput (input)
         validateattributes (value, {"numeric", "logical"}, {"numel", 2,...
                             "vector", "real", "nondecreasing", "finite"},...
                             "histcounts", j + 2);
-        if (! isempty (opts.BinEdges)
+        if (! isempty (opts.BinEdges))
           error ("histcounts: invalid mixture of binning inputs");
         endif
         opts.BinLimits = value;
@@ -226,7 +227,7 @@ function opts = parseinput (input)
         opts.BinMethod = validatestring (value, {"auto", "scott", "fd",...
                                          "integers", "sturges", "sqrt"},...
                                          "histcounts", j + 2);
-        if (! isempty (opts.BinEdges)
+        if (! isempty (opts.BinEdges))
           error ("histcounts: invalid mixture of binning inputs");
         endif
         opts.BinWidth = [];
@@ -255,8 +256,8 @@ endfunction
 function edges = bmauto (d, dl, dh, haslim)
   dr = dh - dl;
   if (! isempty (d) && (isinteger (d) || islogical (d)...
-      || isequal (round (d), d)) && dr <= 50...
-      dh <= flintmax (class (dh)) / 2 && dl <= -flintmax( class (dl)) / 2)
+      || isequal (round (d), d)) && dr <= 50 ...
+      && dh <= flintmax (class (dh)) / 2 && dl >= -flintmax( class (dl)) / 2)
     edges = bmintegers (d, dl, dh, haslim, 65536); ## refer to MAXBINS
   else
     edges = bmscott (d, dl, dh, haslim);
@@ -279,7 +280,7 @@ function edges = bmfd (d, dl, dh, haslim)
   n = numel (d);
   dr = max (d(:)) - min (d(:));
   if (n > 1)
-    iq = max (datafuniqr (d(:)), double (dr) / 10);
+    iq = max (iqr (d(:)), double (dr) / 10);
     bw = 2 * iq * n ^ (-1 / 3);
   else
     binwidth = 1;
@@ -293,7 +294,7 @@ endfunction
 
 function edges = bmintegers (d, dl, dh, haslim, maxbins)
   
-  if (! ismepty (dh) && (dh > flintmax (class (dh)) / 2...
+  if (! isempty (dh) && (dh > flintmax (class (dh)) / 2 ...
       || dl < -flintmax (class (dl)) / 2))
     error ("histcounts: input out of int range");
   endif
@@ -333,7 +334,7 @@ function edges = bmsqrt (d, dl, dh, haslim)
   numbins = max (ceil (sqrt (numel (d))), 1);
   if (! haslim)
     bw = (dh-dl)/numbins;
-    if (isfinite (bw)
+    if (isfinite (bw))
       edges = pickbins (dl, dh, [], bw);
     else
       edges = pickbins (dl, dh, numbins, bw);
@@ -347,7 +348,7 @@ function edges = bmsturges (d, dl, dh, haslim)
   numbins = max ( ceil (log2 (numel (d)) + 1), 1);
   if (! haslim)
     bw = (dh-dl)/numbins;
-    if (isfinite (bw)
+    if (isfinite (bw))
       edges = pickbins (dl, dh, [], bw);
     else
       edges = pickbins (dl, dh, numbins, bw);
@@ -357,7 +358,7 @@ function edges = bmsturges (d, dl, dh, haslim)
   endif
 endfunction
 
-function pickbins (dl, dh, innumbins, inbw)
+function edges = pickbins (dl, dh, innumbins, inbw)
   if (! isempty (dl))
     ds = max (abs ([dl, dh]));
     dr = dh - dl;
@@ -422,7 +423,7 @@ function pickbins (dl, dh, innumbins, inbw)
   else
     
     if (! isempty (innumbins))
-      edges = case (0:numbins, class (dl));
+      edges = cast (0:numbins, class (dl));
     else
       edges = cast ([0,1], class (dl));
     endif
@@ -430,5 +431,46 @@ function pickbins (dl, dh, innumbins, inbw)
   endif
 endfunction
 
+function edges = pickbinsbl (dl, dh, llim, hlim, bw)
+  ds = max (abs ([dl,dh]));
+  dr = dh - dl;
+  bw = max (bw, eps (ds));
+  
+  if (! isempty (dl) && dr > max (sqrt (eps (ds)), realmin (class (ds))))
+    numbins = max (ceil ((hlim - llim) / bw), 1);
+    edges = linspace (llim, hlim, numbins + 1);
+  else
+    edges = [llin,hlim];
+  endif
+  
+endfunction
 
-
+function [counts, binidx] = histcountsnaive (data, edges)
+  counts_sz = numel(edges) - 1;
+  counts = zeros(1, counts_sz);
+  if (nargout == 2)
+    binidx = zeros(size(data));
+    for i = 1:numel(data)
+      if (data(i) <= edges(counts_sz+1))
+        for j = counts_sz:-1:1
+          if (edges(j) <= data(i))
+            counts(j)++;
+            binidx(i) = j;
+            break;
+          endif
+        endfor
+      endif
+    endfor
+  else
+    for i = 1:numel(data)
+      if(data(i) <= edges(counts_sz+1))
+        for j = counts_sz:-1:1
+          if(edges(j) <= data(i))
+            counts(j)++;
+            break;
+          endif
+        endfor
+      endif
+    endfor
+  endif
+endfunction

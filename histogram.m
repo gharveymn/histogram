@@ -1,15 +1,18 @@
 classdef histogram < handle
 	
   properties
+    Annotation         = [];
+    BeingDeleted       = "off";
     BinCounts          = [];         ## 0
     BinCountsMode      = [];         ## "auto"
     BinEdges           = [];         ## [0 1]
     BinLimits          = [];         ## [0 1]
     BinLimitsMode      = [];         ## "auto"
-    BinMethod          = "auto";     ## "auto"
+    BinMethod          = [];         ## "auto"
     BinWidth           = [];         ## 1
     BusyAction         = "queue";
     ButtonDownFcn      = "";
+    Children           = [];
     CreateFcn          = "";
     Data               = [];
     DeleteFcn          = "";
@@ -32,17 +35,11 @@ classdef histogram < handle
     Selected           = "off";
     SelectionHighlight = "on";
     Tag                = "";
+    Type               = "histogram";
     UIContextMenu;
     UserData           = [];
+    Values             = 0;          ## only here for MATLAB compat
     Visible            = "on";
-  endproperties
-  
-  properties (SetAccess = private)
-    ## Annotation = [1×1 matlab.graphics.eventdata.Annotation];
-    BeingDeleted  = "off";
-    ## Children   = [0×0 GraphicsPlaceholder];
-    Type          = "histogram";
-    Values        = 0;
   endproperties
   
   properties (Hidden, SetAccess = private)
@@ -74,37 +71,92 @@ classdef histogram < handle
         endif
       endif
       
-      h.Parent    = newplot (hax);
-      h.AutoColor = getcoloring(hax);
+      hax = newplot (hax);
       
-      hdat = h.Data;
-      if (isempty (hdat) && ! isempty (h.BinCounts))
-        hdat = h.BinEdges;
+      # determine auto coloring
+      clrord = get (hax, 'ColorOrder');
+      clridx = [get(hax, 'ColorOrderIndex'), get(hax, 'LineStyleOrderIndex')];
+      clrsiz = size (clrord, 1);
+      h.AutoColor = clrord(mod (clridx(1) - 1, clrsiz) + 1, :);
+      
+      x = h.Data;
+      if (isempty (x) && ! isempty (h.BinCounts))
+        x = h.BinEdges;
       endif
       
-      if (strcmp (h.Orientation, "horizontal") || (isempty (h.Orientation)...
-          && strcmp (get (hax, "defaultHistogramOrientation"), "horizontal")))
+      if (strcmp (h.Orientation, "horizontal"))
         ## FIXME: should error here if hax is class 'PolarAxes', whenever 
         ##        that is implemented
         
         ## FIXME: need configureAxes here whenever implemented (not vital 
-        ##        though since it doesn't do much here
+        ##        though since it doesn't do much here)
       else
         ## FIXME: configureAxes here
       endif
       
+      if (isempty (h.BinCounts))
+        numnvargs = 0;
+        nvargs = cell(8,1);
+        if (! isempty (h.Normalization))
+          nvargs(1) = "Normalization";
+          nvargs(2) = h.Normalization;
+          numnvargs += 2;
+        endif
+        
+        if(! isempty (h.BinMethod))
+          nvargs(numnvargs+1) = "BinMethod";
+          nvargs(numnvargs+2) = h.BinMethod;
+          numnvargs += 2;
+        endif
+        
+        if (! isempty (h.BinEdges))
+          h.BinCounts = histcounts (h.Data, h.BinEdges, nvargs{1:numnvargs});
+        else
+          if (! isempty (h.BinLimits))
+            nvargs(numnvargs+1) = "BinLimits";
+            nvargs(numnvargs+2) = h.BinLimist;
+            numnvargs += 2;
+          endif
+          
+          if (! isempty (h.BinWidth))
+            nvargs(numnvargs+1) = "BinWidth";
+            nvargs(numnvargs+2) = h.BinWidth;
+            numnvargs += 2;
+          endif
+          
+          if(! isempty (h.NumBins))
+            [h.BinCounts, h.BinEdges] = histcounts (h.Data, h.NumBins,...
+                                                    nvargs{1:numnvargs});
+          else
+            [h.BinCounts, h.BinEdges] = histcounts (h.Data,...
+                                                    nvargs{1:numnvargs});
+          endif
+        endif
+      endif
       
+      xbars = [h.BinEdges(1:end-1)
+               h.BinEdges(1:end-1)
+               h.BinEdges(2:end)
+               h.BinEdges(2:end)];
+      ybars = [zeros(1,numel(h.BinCounts))
+               h.BinCounts
+               h.BinCounts
+               zeros(1,numel(h.BinCounts))];
+      
+      patch (hax, xbars, ybars, "b");
+      
+      h.Parent = hax;
       
     endfunction
     
   endmethods
   
   methods (Access = private)
-    function [hax, varname_idx] = parseinput (h, args, nargs, innum);
+    function dispatch = parseinput (h, args, nargs, innum);
       
-      ## opts = struct ("Data", [], "NumBins", [], "BinEdges", [],...
-      ##               "BinLimits", [], "BinWidth", [], "Normalization", "",...
-      ##               "BinMethod", "auto", "BinCounts", [], "Orientation", "");
+      # pi = struct ("Data", [], "NumBins", [], "BinEdges", [],...
+      #             "BinLimits", [], "BinWidth", [], "Normalization", "",...
+      #             "BinMethod", "auto", "BinCounts", [], "Orientation", "");
       
       hax = __plt_get_axis_arg__ ("histogram", args{:});
       innum = 1 + (! isempty (hax));
@@ -112,26 +164,24 @@ classdef histogram < handle
       foundonlynamevals = true;
       dispatch = false;
       
-      return;
-      
       ## first input
-      if (innum < nargs)
+      if (innum <= nargs)
         currin = args{innum};
         if(! ischar (currin))
           validateattributes (currin, {"numeric", "logical", "datetime",...
-                              "duration"}, {"real"}, "histogram", innum);
+                              "duration"}, {"real"}, "histogram", "x", innum);
           h.Data = currin;
-          innum += 1;
           foundonlynamevals = false;
+          innum += 1;
         endif
         
         ## second input
-        if (innum < nargs)
+        if (innum <= nargs)
           currin = args{innum};
           if (! ischar (currin))
             if (isscalar (currin))
               validateattributes (currin, {"numeric", "logical"}, {"integer",...
-                                  "positive"}, "histogram", innum);
+                                  "positive"}, "histogram", "nbins", innum);
               h.NumBins   = currin;
               h.BinMethod = "";
             else
@@ -154,7 +204,7 @@ classdef histogram < handle
               else
                 validateattributes (currin, {"numeric", "logical"}, {"vector",...
                                     "nonempty", "real", "nondecreasing"}, ...
-                                    "histogram", innum);
+                                    "histogram", "edges", innum);
               endif
               h.BinEdges  = currin;
               h.BinMethod = "";
@@ -167,6 +217,7 @@ classdef histogram < handle
             error ("histogram: each name argument must have a value pair");
           endif
           
+          ## does not include Annocation, BeingDeleted, Children, Type, Values
           validnames = {"BinCounts",
                         "BinCountsMode",
                         "BinEdges",
@@ -209,11 +260,12 @@ classdef histogram < handle
             switch (name)
               case "Data"
                 validateattributes (value, {"numeric", "logical", "datetime",...
-                              "duration"}, {"real"}, "histogram", j+1);
+                              "duration"}, {"real"}, "histogram", "Data", j+1);
                 h.Data = value;
               case "NumBins"
                 validateattributes (value, {"numeric", "logical"}, {"scalar",...
-                                    "integer", "positive"}, "histogram", j+1);
+                                    "integer", "positive"}, "histogram",...
+                                    "NumBins", j+1);
                 if (! isempty (h.BinEdges))
                   error ("histogram: invalid mixture of bin arguments");
                 endif
@@ -238,7 +290,7 @@ classdef histogram < handle
                 else
                   validateattributes (value, {"numeric", "logical"}, {"vector",...
                                       "nonempty", "real", "nondecreasing"}, ...
-                                      "histogram", j+1);
+                                      "histogram", "BinEdges", j+1);
                 endif
                 
                 if (length (value) < 2)
@@ -271,7 +323,7 @@ classdef histogram < handle
                 else
                   validateattributes (value, {"numeric", "logical"}, {"scalar",...
                                       "real", "positive", "finite"}, ...
-                                      "histogram", j+1);
+                                      "histogram", "BinWidth", j+1);
                 endif
                 if (! isempty (h.BinEdges))
                   error ("histogram: invalid mixture of bin arguments");
@@ -288,7 +340,7 @@ classdef histogram < handle
                 else
                   validateattributes (value, {"numeric", "logical"}, {"numel",...
                                       2, "vector", "real", "nondecreasing",...
-                                      "finite"}, "histogram", j+1);                    
+                                      "finite"}, "histogram", "BinLimits", j+1);                    
                 endif
                 if (! isempty (h.BinEdges))
                   error ("histogram: invalid mixture of bin arguments");
@@ -298,14 +350,16 @@ classdef histogram < handle
                 h.Normalization = validatestring (value, {"count",...
                                                   "countdensity", "cumcount",...
                                                   "probability", "pdf",...
-                                                  "cdf"}, "histogram", j+1);
+                                                  "cdf"}, "histogram",...
+                                                  "Normalization", j+1);
               case "BinMethod"
                 h.BinMethod = validatestring (value, {"auto", "scott", "fd",...
                                               "integers", "sturges", "sqrt",...
                                               "century", "decade", "year",...
                                               "quarter", "moneth", "week",...
                                               "day", "hour", "minute",...
-                                              "second"}, "histogram", j+1);
+                                              "second"}, "histogram",...
+                                              "BinMethod", j+1);
                 if (! isempty (h.BinEdges))
                   error ("histogram: invalid mixture of bin arguments");
                 endif
@@ -314,7 +368,7 @@ classdef histogram < handle
               case "BinCounts"
                 validateattributes (value, {"numeric", "logical"}, {"real",...
                                     "vector", "nonnegative", "finite"},...
-                                    "histogram", j+1);
+                                    "histogram", "BinCounts", j+1);
                 h.BinCounts = reshape(value, 1, []);                    
               case "BinLimitsMode"
                 h.BinLimitsMode = validatestring(value, {"auto", "manual"});
@@ -330,7 +384,7 @@ classdef histogram < handle
               case "Orientation"
                 h.Orientation = validatestring (value, {"vertical",...
                                                 "horizontal"}, "histogram",...
-                                                j+1);
+                                                "Orientation", j+1);
               otherwise
                 h.(name) = value;
             endswitch
@@ -435,13 +489,6 @@ classdef histogram < handle
           endif
         endif
       endif
-    endfunction
-    
-    function coloring = getcoloring(ax)
-      clrord = get (ax, 'ColorOrder');
-      clridx = [get(ax, 'ColorOrderIndex'), get(ax, 'LineStyleOrderIndex')];
-      clrsiz = size (co, 1);
-      coloring = clrord(mod (clridx(1) - 1, clrsiz) + 1, :);
     endfunction
   endmethods
 endclassdef
