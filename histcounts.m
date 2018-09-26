@@ -145,19 +145,290 @@ function [counts,edges,binidx] = histcounts (data, varargin)
   endif
 endfunction
 
-function edges = bmselect (bm, datacol, datamin, datamax, hardlim)
-  switch (ins)
+function opts = parseinput (input)
+  
+  opts = struct ("NumBins", [], "BinEdges", [], "BinLimits", [],...
+                 "BinWidth", [], "Normalization", "count", "BinMethod", "auto");
+  
+  idx = 1;
+  currin = input{idx};
+  if (isnumeric (currin) || islogical (currin))
+    if (isscalar (currin))
+      validateattributes (currin, {"numeric", "logical"}, {"integer",...
+                          "positive"}, "histcounts", idx + 1);
+      opts.NumBins   = currin;
+      opts.BinMethod = [];
+    else
+      validateattributes (currin, {"numeric", "logical"}, {"vector", ...
+                          "nonempty", "real", "nondecreasing"},...
+                          "histcounts", idx + 1);
+      opts.NumEdges  = currin;
+      opts.BinMethod = [];
+    endif
+    idx += 1;
+  endif
+  
+  ## parse name-val pairs
+  if (rem (length(input)-idx+1, 2) != 0)
+    error ("histcount: each name argument must have a value pair");
+  endif
+  
+  validnames = {"NumBins", "BinEdges", "BinWidth", "BinLimits",...
+                "Normalization", "BinMethod"};
+  
+  for j = idx:2:length(input)
+    name  = validatestring (input{j}, validnames, "histcounts", j + 1);
+    value = input{j+1};
+    switch (name)
+      case "NumBins"
+        validateattributes (value, {"numeric", "logical"}, {"scalar",...
+                            "integer", "positive"}, "NumBins", j + 2);
+        if (! isempty (opts.BinEdges)
+          error ("histcounts: invalid mixture of binning inputs");
+        endif
+        opts.NumBins   =  value;
+        opts.BinMethod = [];
+        opts.BinWidth  = [];
+      case "BinEdges"
+        validateattributes (value, {"numeric", "logical"}, {"vector", "real", 
+                            "nondecreasing"}, "histcounts", j + 2);
+        if (length (value) < 2)
+          error("histcounts: must have at least 2 bin edges.");
+        endif
+        opts.BinEdges  = value;
+        opts.BinMethod = [];
+        opts.NumBins   = [];
+        opts.BinWidth  = [];
+        opts.BinLimits = [];
+      case "BinWidth"
+        validateattributes (value, {"numeric", "logical"}, {"scalar", "real",...
+                            "positive", "finite"}, "BinWidth", j + 2);
+        if (! isempty (opts.BinEdges)
+          error ("histcounts: invalid mixture of binning inputs");
+        endif
+        opts.BinWidth  = value;
+        opts.BinMethod = [];
+        opts.NumBins   = [];
+      case "BinLimits"
+        validateattributes (value, {"numeric", "logical"}, {"numel", 2,...
+                            "vector", "real", "nondecreasing", "finite"},...
+                            "histcounts", j + 2);
+        if (! isempty (opts.BinEdges)
+          error ("histcounts: invalid mixture of binning inputs");
+        endif
+        opts.BinLimits = value;
+      case "Normalization"
+        opts.Normalization = validatestring (value, {"count", "countdensity",...
+                                             "cumcount", "probability",...
+                                             "pdf", "cdf"}, "histcounts",...
+                                             j + 2);
+      otherwise ## aka "BinMethod"
+        opts.BinMethod = validatestring (value, {"auto", "scott", "fd",...
+                                         "integers", "sturges", "sqrt"},...
+                                         "histcounts", j + 2);
+        if (! isempty (opts.BinEdges)
+          error ("histcounts: invalid mixture of binning inputs");
+        endif
+        opts.BinWidth = [];
+        opts.NumBins  = [];
+    endswitch
+  endfor
+endfunction
+
+function edges = bmselect (bm, d, dl, dh, haslim)
+  switch (bm)
     case "auto"
-      edges = bmsauto (datacol, datamin, datamax, hardlim);
+      edges = bmauto (d, dl, dh, haslim);
     case "scott"
-      edges = bmscott (datacol, datamin, datamax, hardlim);
+      edges = bmscott (d, dl, dh, haslim);
     case "fd"
-      edges = bmfd (datacol, datamin, datamax, hardlim);
+      edges = bmfd (d, dl, dh, haslim);
     case "integers"
-      edges = bmintegers (datacol, datamin, datamax, hardlim, MAXBINS);
+      edges = bmintegers (d, dl, dh, haslim, MAXBINS);
     case "sqrt"
-      edges = bmsqrt (datacol, datamin, datamax, hardlim);
+      edges = bmsqrt (d, dl, dh, haslim);
     case "sturges"
-      edges = bmsturges (datacol, datamin, datamax, hardlim);
+      edges = bmsturges (d, dl, dh, haslim);
   endswitch
 endfunction
+
+function edges = bmauto (d, dl, dh, haslim)
+  dr = dh - dl;
+  if (! isempty (d) && (isinteger (d) || islogical (d)...
+      || isequal (round (d), d)) && dr <= 50...
+      dh <= flintmax (class (dh)) / 2 && dl <= -flintmax( class (dl)) / 2)
+    edges = bmintegers (d, dl, dh, haslim, 65536); ## refer to MAXBINS
+  else
+    edges = bmscott (d, dl, dh, haslim);
+  endif  
+endfunction
+
+function edges = bmscott (d, dl, dh, haslim)
+  if (! isfloat (d))
+    d = double (d);
+  endif
+  bw = 3.5 * std (d) / (numel (d) ^ (1/3));
+  if (! haslim)
+    edges = pickbins (dl, dh, [], bw);
+  else
+    edges = pickbinsbl (min (d(:)), max (d(:)), dl, dh, bw);
+  endif
+endfunction
+
+function edges = bmfd (d, dl, dh, haslim)
+  n = numel (d);
+  dr = max (d(:)) - min (d(:));
+  if (n > 1)
+    iq = max (datafuniqr (d(:)), double (dr) / 10);
+    bw = 2 * iq * n ^ (-1 / 3);
+  else
+    binwidth = 1;
+  endif
+  if (! haslim)
+    edges = pickbins (dl, dh, [], bw);
+  else
+    edges = pickbinsbl (min (d(:)), max (d(:)), dl, dh, bw);
+  endif
+endfunction
+
+function edges = bmintegers (d, dl, dh, haslim, maxbins)
+  
+  if (! ismepty (dh) && (dh > flintmax (class (dh)) / 2...
+      || dl < -flintmax (class (dl)) / 2))
+    error ("histcounts: input out of int range");
+  endif
+  
+  dr = dh - dl;
+  if (! isempty (d))
+    ds = max (abs (d(:)));
+    dr = max (d(:)) - min (d(:));
+    if  (dr > maxbins)
+      bw = 10 ^ ceil (log10 (dr / maxbins));
+    elseif (isfloat (d) && eps (ds) > 1)
+      bw = 10 ^ ceil (log10 (eps (ds)));
+    else
+      bw = 1;
+    endif
+    if (! haslim)
+      dl = bw * round (dl / bw);
+      dh = bw * round (dh / bw);
+      edges = (floor (dl) - 0.5 * bw):bw:(ceil (dh) + 0.5 * bw);
+    else
+      dlh = bw * ceil (dl / bw) + 0.5;
+      dhl = bw * floor (dh / bw) - 0.5;
+      edges = [dl, (dlh:bw:dhl), dh];
+    endif
+  else
+    if (! haslim)
+      edges = cast ([-0.5, 0.5], class(dr));
+    else
+      dlh = ceil (dl) + 0.5;
+      dhl = floor (dh) - 0.5;
+      edges = [dl, (dlh:bw:dhl), dh];
+    endif
+  endif
+endfunction
+
+function edges = bmsqrt (d, dl, dh, haslim)
+  numbins = max (ceil (sqrt (numel (d))), 1);
+  if (! haslim)
+    bw = (dh-dl)/numbins;
+    if (isfinite (bw)
+      edges = pickbins (dl, dh, [], bw);
+    else
+      edges = pickbins (dl, dh, numbins, bw);
+    endif
+  else
+    edges = linspace (dl, dh, numbins + 1);
+  endif
+endfunction
+
+function edges = bmsturges (d, dl, dh, haslim)
+  numbins = max ( ceil (log2 (numel (d)) + 1), 1);
+  if (! haslim)
+    bw = (dh-dl)/numbins;
+    if (isfinite (bw)
+      edges = pickbins (dl, dh, [], bw);
+    else
+      edges = pickbins (dl, dh, numbins, bw);
+    endif
+  else
+    edges = linspace (dl, dh, numbins + 1);
+  endif
+endfunction
+
+function pickbins (dl, dh, innumbins, inbw)
+  if (! isempty (dl))
+    ds = max (abs ([dl, dh]));
+    dr = dh - dl;
+    inbw = max (inbw, eps (ds));
+    
+    if (dr > max (sqrt (eps (ds)), realmin (class (ds))))
+      ord   = 10 .^ floor (log10 (inbw));
+      relsz = inbw / ord;
+      
+      if (isempty (innumbins))
+        if (relsz < 1.5)
+          bw = 1*ord;
+        elseif (relsz < 2.5)
+          bw = 2*ord;
+        elseif (relsz < 4)
+          bw = 3*ord;
+        elseif (relsz < 7.5)
+          bw = 5*ord;
+        else
+          bw = 10*ord;
+        endif
+        
+        left = max (min (bw*floor (dl ./ bw), dl), -realmax (class (dh)));
+        numbins = max (1, ceil ((dh - left) ./ bw));
+        right = min ( max (left + numbins .* bw, dh), realmax (class (dh)));
+        
+      else
+        bw = ord * floor (relsz);
+        left = max (min (bw * floor (dl ./ bw), dl), -realmax (class (dl)));
+        if (innumbins > 1)
+          leftl = (dh - left) / innumbins;
+          lefth = (dh - left) / (innumbins - 1);
+          leftord = 10 ^ floor (log10 (lefth - leftl));
+          bw = leftord * ceil (leftl ./ leftord);
+        endif
+        
+        numbins = innumbins
+        right = min (max ( left + numbins .* bw, dh), realmax (class (dh))); 
+        
+      endif
+      
+    else
+      if (isempty (innumbins))
+        innumbins = 1;
+      endif
+      
+      br = max (1, ceil (innumbins * eps (ds)));
+      left = floor (2 * (dl - br ./ 4)) / 2;
+      right = ceil (2 * (dh + br ./ 4)) / 2;
+      
+      bw = (right - left) ./ innumbins;
+      numbins = innumbins;
+      
+    endif
+    
+    if (! isfinite (bw))
+      edges = linspace (left, right, numbins + 1);
+    else
+      edges = [left, left + (1:numbins-1) .* bw, right];
+    endif
+    
+  else
+    
+    if (! isempty (innumbins))
+      edges = case (0:numbins, class (dl));
+    else
+      edges = cast ([0,1], class (dl));
+    endif
+    
+  endif
+endfunction
+
+
+
