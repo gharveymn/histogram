@@ -43,7 +43,9 @@ classdef histogram < handle
   endproperties
   
   properties (Hidden, SetAccess = private)
-    AutoColor = [];
+    AutoColor  = [];
+    XBarCoords;
+    YBarCoords;
   endproperties
   
   methods (Access = public)
@@ -134,16 +136,18 @@ classdef histogram < handle
         endif
       endif
       
-      xbars = [h.BinEdges(1:end-1)
-               h.BinEdges(1:end-1)
-               h.BinEdges(2:end)
-               h.BinEdges(2:end)];
-      ybars = [zeros(1,numel(h.BinCounts))
-               h.BinCounts
-               h.BinCounts
-               zeros(1,numel(h.BinCounts))];
+      h.XBarCoords = [h.BinEdges(1:end-1);
+                      h.BinEdges(1:end-1);
+                      h.BinEdges(2:end);
+                      h.BinEdges(2:end)];
+      h.YBarCoords = [zeros(1,numel(h.BinCounts));
+                      h.BinCounts;
+                      h.BinCounts;
+                      zeros(1,numel(h.BinCounts))];
       
-      patch (hax, xbars, ybars, "b");
+      h.Parent = hax;
+      
+      patch (h.Parent, h.XBarCoords, h.YBarCoords, h.AutoColor);
       
       h.Parent = hax;
       

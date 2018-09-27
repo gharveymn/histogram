@@ -120,9 +120,9 @@ function [counts,edges,binidx] = histcounts (data, varargin)
 
   ## TODO histcountsmex in octfile
   if (nargout <= 2)
-    counts = histcountsnaive (data, edges);
+    counts = histcountsbits (data, edges);
   else
-    [counts, binidx] = histcountsnaive (data, edges);
+    [counts, binidx] = histcountsbits (data, edges);
   endif
 
   if (! isempty (ins))
@@ -445,32 +445,22 @@ function edges = pickbinsbl (dl, dh, llim, hlim, bw)
   
 endfunction
 
-function [counts, binidx] = histcountsnaive (data, edges)
-  counts_sz = numel(edges) - 1;
-  counts = zeros(1, counts_sz);
-  if (nargout == 2)
-    binidx = zeros(size(data));
-    for i = 1:numel(data)
-      if (data(i) <= edges(counts_sz+1))
-        for j = counts_sz:-1:1
-          if (edges(j) <= data(i))
-            counts(j)++;
-            binidx(i) = j;
-            break;
-          endif
-        endfor
-      endif
-    endfor
-  else
-    for i = 1:numel(data)
-      if(data(i) <= edges(counts_sz+1))
-        for j = counts_sz:-1:1
-          if(edges(j) <= data(i))
-            counts(j)++;
-            break;
-          endif
-        endfor
-      endif
-    endfor
-  endif
+function [counts, binidx] = histcountsbits (data, edges)
+	counts = zeros(1, numel(edges)-1);
+	if(nargout == 2)
+		binidx = zeros(size(data));
+		for i = 1:numel(edges)-2
+			l = (data >= edges(i)) & (data < edges(i+1));
+			counts(i) = sum(l);
+			binidx(l) = i;
+		endfor
+		l = (data >= edges(end-1)) & (data <= edges(end));
+		counts(end) = sum(l);
+		binidx(l) = numel(counts);
+	else
+		for i = 1:numel(edges)-2
+			counts(i) = sum((data >= edges(i)) & (data < edges(i+1)));
+		endfor
+		counts(end) = sum((data >= edges(end-1)) & (data <= edges(end)));
+	endif
 endfunction
