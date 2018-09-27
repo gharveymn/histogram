@@ -99,7 +99,8 @@ function [counts,edges,binidx] = histcounts (data, varargin)
       endif
       if (! isempty (ins.NumBins))
         numbins = double (ins.NumBins);
-        edges = [datamin + (0:numbins-1) .* ((datamax - datamin) / numbins), datamax];
+        edges = [datamin + (0:numbins-1) .* ((datamax - datamin) / numbins),...
+                 datamax];
       elseif (! isempty (ins.BinWidth))
         if (! isfloat (ins.BinWidth))
           ins.BinWidth = double (ins.BinWidth);
@@ -120,9 +121,9 @@ function [counts,edges,binidx] = histcounts (data, varargin)
 
   ## TODO histcountsmex in octfile
   if (nargout <= 2)
-    counts = histcountsbits (data, edges);
+    counts = histcountsoct (data, edges);
   else
-    [counts, binidx] = histcountsbits (data, edges);
+    [counts, binidx] = histcountsoct (data, edges);
   endif
 
   if (! isempty (ins))
@@ -258,7 +259,7 @@ function edges = bmauto (d, dl, dh, haslim)
   if (! isempty (d) && (isinteger (d) || islogical (d)...
       || isequal (round (d), d)) && dr <= 50 ...
       && dh <= flintmax (class (dh)) / 2 && dl >= -flintmax( class (dl)) / 2)
-    edges = bmintegers (d, dl, dh, haslim, 65536); ## refer to MAXBINS
+    edges = bmintegers (d, dl, dh, haslim, MAXBINS);
   else
     edges = bmscott (d, dl, dh, haslim);
   endif  
@@ -405,8 +406,8 @@ function edges = pickbins (dl, dh, innumbins, inbw)
         innumbins = 1;
       endif
       
-      br = max (1, ceil (innumbins * eps (ds)));
-      left = floor (2 * (dl - br ./ 4)) / 2;
+      br    = max (1, ceil (innumbins * eps (ds)));
+      left  = floor (2 * (dl - br ./ 4)) / 2;
       right = ceil (2 * (dh + br ./ 4)) / 2;
       
       bw = (right - left) ./ innumbins;
@@ -463,4 +464,8 @@ function [counts, binidx] = histcountsbits (data, edges)
 		endfor
 		counts(end) = sum((data >= edges(end-1)) & (data <= edges(end)));
 	endif
+endfunction
+
+function n = MAXBINS
+  n = 65536;
 endfunction
