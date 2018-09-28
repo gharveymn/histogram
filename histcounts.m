@@ -5,6 +5,9 @@ function [counts,edges,binidx] = histcounts (data, varargin)
   validateattributes (data, {"numeric", "logical"}, {"real"}, "histcounts");
   isedgestrans = false;
   
+  s  = [];
+  si = [];
+  
   if (nargin < 3)
     ins = [];
     if (nargin == 2 && ! isscalar (varargin{1}))
@@ -86,7 +89,7 @@ function [counts,edges,binidx] = histcounts (data, varargin)
             edges = cast ([0, ins.BinWidth], class (datarange));
           endif
         else
-          edges = bmselect (ins.BinMethod, datacol, datamin, datamax, false);
+          [edges,s,si] = bmselect (ins.BinMethod, datacol, datamin, datamax, false);
         endif
       endif
     else
@@ -118,13 +121,25 @@ function [counts,edges,binidx] = histcounts (data, varargin)
   endif
 
   edges = full(edges);
-
-  ## TODO histcountsmex in octfile
+  
+if (false)
   if (nargout <= 2)
-    counts = histcountsoct (data, edges);
+    counts = histcountsoct (data, edges, ! isempty(s));
   else
-    [counts, binidx] = histcountsoct (data, edges);
+    if (! isempty (s))
+      [counts, binidx] = histcountsoct (data, edges, true);
+      binidx(si) = binidx;
+    else
+      [counts, binidx] = histcountsoct (data, edges, false);
+    endif
   endif
+else
+  if (nargout <= 2)
+    counts = histcountsoct (data, edges, ! isempty(s));
+  else
+    [counts, binidx] = histcountsoct (data, edges, ! isempty(s));
+  endif
+endif
 
   if (! isempty (ins))
     switch ins.Normalization
@@ -237,14 +252,14 @@ function opts = parseinput (input)
   endfor
 endfunction
 
-function edges = bmselect (bm, d, dl, dh, haslim)
+function [edges, s, si] = bmselect (bm, d, dl, dh, haslim)
   switch (bm)
     case "auto"
       edges = bmauto (d, dl, dh, haslim);
     case "scott"
       edges = bmscott (d, dl, dh, haslim);
     case "fd"
-      edges = bmfd (d, dl, dh, haslim);
+      [edges,s,si] = bmfd (d, dl, dh, haslim);
     case "integers"
       edges = bmintegers (d, dl, dh, haslim, MAXBINS);
     case "sqrt"
@@ -277,20 +292,66 @@ function edges = bmscott (d, dl, dh, haslim)
   endif
 endfunction
 
-function edges = bmfd (d, dl, dh, haslim)
+function [edges, s, si] = bmfd (d, dl, dh, haslim)
+  
+if(false)
   n = numel (d);
-  dr = max (d(:)) - min (d(:));
   if (n > 1)
+    [s, si] = sort(d);
+    dr = s(end) - s(1);
+    iq = max (sortediqr (s(:)), double (dr) / 10);
+    bw = 2 * iq * n ^ (-1 / 3);
+    
+    if (! haslim)
+      edges = pickbins (dl, dh, [], bw);
+    else
+      edges = pickbinsbl (s(1), s(end), dl, dh, bw);
+    endif
+    
+  else
+    dr = 0;
+    bw = 1;
+    
+    s = [];
+    si = [];
+    
+    if (! haslim)
+      edges = pickbins (dl, dh, [], bw);
+    else
+      edges = pickbinsbl (d, d, dl, dh, bw);
+    endif
+  endif
+else
+  n = numel (d);
+  if (n > 1)
+    
+    s = [];
+    si = [];
+    
+    dr = max (d(:)) - min (d(:));
     iq = max (iqr (d(:)), double (dr) / 10);
     bw = 2 * iq * n ^ (-1 / 3);
+    
+    if (! haslim)
+      edges = pickbins (dl, dh, [], bw);
+    else
+      edges = pickbinsbl (min (d(:)), max (d(:)), dl, dh, bw);
+    endif
+    
   else
-    binwidth = 1;
+    dr = 0;
+    bw = 1;
+    
+    s = [];
+    si = [];
+    
+    if (! haslim)
+      edges = pickbins (dl, dh, [], bw);
+    else
+      edges = pickbinsbl (d, d, dl, dh, bw);
+    endif
   endif
-  if (! haslim)
-    edges = pickbins (dl, dh, [], bw);
-  else
-    edges = pickbinsbl (min (d(:)), max (d(:)), dl, dh, bw);
-  endif
+endif
 endfunction
 
 function edges = bmintegers (d, dl, dh, haslim, maxbins)
@@ -464,6 +525,27 @@ function [counts, binidx] = histcountsbits (data, edges)
 		endfor
 		counts(end) = sum((data >= edges(end-1)) & (data <= edges(end)));
 	endif
+endfunction
+
+function iq = sortediqr(x)
+  n = sum(! isnan (x(:)));
+  iq = sortedprctile(x, 75, n) - sortedprctile(x, 25, n);
+endfunction
+
+function v = sortedprctile(x, p, n)
+  r = (p/100)*n;
+  k = floor(r+0.5);
+  kp1 = k+1;
+  r = r-k;
+  
+  k   = max (k, 1);
+  kp1 = min (kp1, n);
+  
+  if(k != kp1)
+    v = (0.5 + r) .* x(kp1) + (0.5 - r) .* x(k);
+  else
+    v = x(k);
+  end
 endfunction
 
 function n = MAXBINS

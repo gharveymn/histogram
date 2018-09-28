@@ -7,8 +7,8 @@ classdef histogram < handle
     BinCountsMode      = [];         ## "auto"
     BinEdges           = [];         ## [0 1]
     BinLimits          = [];         ## [0 1]
-    BinLimitsMode      = [];         ## "auto"
-    BinMethod          = [];         ## "auto"
+    BinLimitsMode      = "auto";     ## "auto"
+    BinMethod          = "auto";     ## "auto"
     BinWidth           = [];         ## 1
     BusyAction         = "queue";
     ButtonDownFcn      = "";
