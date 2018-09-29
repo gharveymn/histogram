@@ -1,9 +1,9 @@
-function idx = testequal(t1,t2)
+function idx = testequal(r1,r2)
   idx = 0;
-  for i = 1:numel(t1)
-    s1 = t1{i};
-    s2 = t2{i};
-    if(s1.counts != s2.counts || s1.edges != s2.edges || s1.binidx != s2.binidx)
+  for i = 1:numel(r1)
+    s1 = r1(i);
+    s2 = r2(i);
+    if(any(s1.c != s2.c) || any(s1.e != s2.e) || any(s1.b != s2.b))
       idx = i;
       return;
     endif

@@ -6,7 +6,7 @@ static octave_value_list hco_CountEvenSpacing(Matrix in_data, Matrix in_edges, o
 static octave_value_list hco_CountNormal(Matrix in_data, Matrix in_edges, octave_idx_type data_sz, octave_idx_type counts_sz, int nargout);
 static octave_value_list hco_CountSorted(Matrix in_data, Matrix in_edges, octave_idx_type data_sz, octave_idx_type counts_sz, int nargout, sortmode sort_mode);
 
-#define HCO_DEBUG 1
+#define HCO_DEBUG 0
 
 DEFUN_DLD (histcountsoct, args, nargout, "internal function for binning in histcounts")
 {
@@ -70,14 +70,48 @@ static octave_value_list hco_CountEvenSpacing(Matrix in_data, Matrix in_edges, o
     binidx.fill(0);
     for(i = 0; i < data_sz; i++)
     {
-      if(in_edges(0) <= in_data(i) && in_data(i) <= in_edges(counts_sz))
+      if(in_data(i) == in_edges(counts_sz))
       {
-        j = (octave_idx_type)((in_data(i) - in_edges(0)) / spacing);
-        counts(j)++;
-        binidx(i) = j+1;
+        counts(counts_sz-1)++;
+        binidx(i) = counts_sz;
+      }
+      else
+      {
+        
+        if(in_edges(0) <= in_data(i) && in_edges < in_data(counts_sz))
+        {
+          j = (octave_idx_type)((in_data(i) - in_edges(0)) / spacing);
+          
+          // floating points are fickle, so check the output
+          
+          if(j == 0)
+          {
+            if(in_edges(j+1) <= in_data(i))
+            {
+              j++;
+            }
+          }
+          else if(j == counts_sz-1)
+          {
+            if(in_data(i) < in_edges(j))
+            {
+              j--;
+            }
+          }
+          if (0 <= j && j < counts_sz)
+          {
+            if(in_data(i) < in_edges(j))
+            {
+              
+            }
+            else if(in_edges(j+1) <= 
+            counts(j)++;
+            binidx(i) = j+1;
+          }
+        }
       }
     }
-    octave_value_list ret;
+    octave_value_list ret (2);
     ret(0) = octave_value(counts);
     ret(1) = octave_value(binidx);
     return ret;
@@ -86,10 +120,20 @@ static octave_value_list hco_CountEvenSpacing(Matrix in_data, Matrix in_edges, o
   {
     for(i = 0; i < data_sz; i++)
     {
-      if(in_edges(0) <= in_data(i) && in_data(i) <= in_edges(counts_sz))
+      // floating points are fickle, so check the output
+      if(in_data(i) == in_edges(counts_sz))
+      {
+        counts(counts_sz-1)++;
+      }
+      else
       {
         j = (octave_idx_type)((in_data(i) - in_edges(0)) / spacing);
-        counts(j)++;
+        
+        // floating points are fickle, so check the output
+        if (0 <= j && j < counts_sz)
+        {
+          counts(j)++;
+        }
       }
     }
     return octave_value(counts);
@@ -127,7 +171,7 @@ static octave_value_list hco_CountNormal(Matrix in_data, Matrix in_edges, octave
         }
       }
     }
-    octave_value_list ret;
+    octave_value_list ret(2);
     ret(0) = octave_value(counts);
     ret(1) = octave_value(binidx);
     return ret;
@@ -180,7 +224,7 @@ static octave_value_list hco_CountSorted(Matrix in_data, Matrix in_edges, octave
       Matrix binidx (in_data.dims());
       binidx.fill(0);
       
-      for (j = counts_sz - 1; j >= 0; j--)
+      for (j = counts_sz - 1; j >= 0 && i >= 0; j--)
       {
         while(i >= 0 && in_edges(j) <= in_data(i))
         {
@@ -190,14 +234,14 @@ static octave_value_list hco_CountSorted(Matrix in_data, Matrix in_edges, octave
         }
       }
       
-      octave_value_list ret;
+      octave_value_list ret (2);
       ret(0) = octave_value(counts);
       ret(1) = octave_value(binidx);
       return ret;
     }
     else
     {
-      for (j = counts_sz - 1; j >= 0; j--)
+      for (j = counts_sz - 1; j >= 0 && i >= 0; j--)
       {
         while(i >= 0 && in_edges(j) <= in_data(i))
         {
@@ -223,7 +267,7 @@ static octave_value_list hco_CountSorted(Matrix in_data, Matrix in_edges, octave
       Matrix binidx (in_data.dims());
       binidx.fill(0);
       
-      for (j = counts_sz - 1; j >= 0; j--)
+      for (j = counts_sz - 1; j >= 0 && i < data_sz; j--)
       {
         while(i < data_sz && in_edges(j) <= in_data(i))
         {
@@ -233,14 +277,14 @@ static octave_value_list hco_CountSorted(Matrix in_data, Matrix in_edges, octave
         }
       }
       
-      octave_value_list ret;
+      octave_value_list ret (2);
       ret(0) = octave_value(counts);
       ret(1) = octave_value(binidx);
       return ret;
     }
     else
     {
-      for (j = counts_sz - 1; j >= 0; j--)
+      for (j = counts_sz - 1; j >= 0 && i < data_sz; j--)
       {
         while(i < data_sz && in_edges(j) <= in_data(i))
         {

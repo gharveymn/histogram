@@ -122,24 +122,16 @@ function [counts,edges,binidx] = histcounts (data, varargin)
 
   edges = full(edges);
   
-if (false)
   if (nargout <= 2)
     counts = histcountsoct (data, edges, ! isempty(s));
   else
     if (! isempty (s))
-      [counts, binidx] = histcountsoct (data, edges, true);
+      [counts, binidx] = histcountsoct (s, edges, true);
       binidx(si) = binidx;
     else
       [counts, binidx] = histcountsoct (data, edges, false);
     endif
   endif
-else
-  if (nargout <= 2)
-    counts = histcountsoct (data, edges, ! isempty(s));
-  else
-    [counts, binidx] = histcountsoct (data, edges, ! isempty(s));
-  endif
-endif
 
   if (! isempty (ins))
     switch ins.Normalization
@@ -199,7 +191,7 @@ function opts = parseinput (input)
     switch (name)
       case "NumBins"
         validateattributes (value, {"numeric", "logical"}, {"scalar",...
-                            "integer", "positive"}, "NumBins", j + 2);
+                            "integer", "positive"}, "histcounts", "NumBins", j + 2);
         if (! isempty (opts.BinEdges))
           error ("histcounts: invalid mixture of binning inputs");
         endif
@@ -207,8 +199,8 @@ function opts = parseinput (input)
         opts.BinMethod = [];
         opts.BinWidth  = [];
       case "BinEdges"
-        validateattributes (value, {"numeric", "logical"}, {"vector", "real", 
-                            "nondecreasing"}, "histcounts", j + 2);
+        validateattributes (value, {"numeric", "logical"}, {"vector", "real",...
+                            "nondecreasing"}, "histcounts", "BinEdges", j + 2);
         if (length (value) < 2)
           error("histcounts: must have at least 2 bin edges.");
         endif
@@ -219,7 +211,7 @@ function opts = parseinput (input)
         opts.BinLimits = [];
       case "BinWidth"
         validateattributes (value, {"numeric", "logical"}, {"scalar", "real",...
-                            "positive", "finite"}, "BinWidth", j + 2);
+                            "positive", "finite"}, "histcounts", "BinWidth", j + 2);
         if (! isempty (opts.BinEdges))
           error ("histcounts: invalid mixture of binning inputs");
         endif
@@ -229,7 +221,7 @@ function opts = parseinput (input)
       case "BinLimits"
         validateattributes (value, {"numeric", "logical"}, {"numel", 2,...
                             "vector", "real", "nondecreasing", "finite"},...
-                            "histcounts", j + 2);
+                            "histcounts", "BinLimits", j + 2);
         if (! isempty (opts.BinEdges))
           error ("histcounts: invalid mixture of binning inputs");
         endif
@@ -238,11 +230,11 @@ function opts = parseinput (input)
         opts.Normalization = validatestring (value, {"count", "countdensity",...
                                              "cumcount", "probability",...
                                              "pdf", "cdf"}, "histcounts",...
-                                             j + 2);
+                                             "Normalization", j + 2);
       otherwise ## aka "BinMethod"
         opts.BinMethod = validatestring (value, {"auto", "scott", "fd",...
                                          "integers", "sturges", "sqrt"},...
-                                         "histcounts", j + 2);
+                                         "histcounts", "BinMethod", j + 2);
         if (! isempty (opts.BinEdges))
           error ("histcounts: invalid mixture of binning inputs");
         endif
@@ -253,6 +245,8 @@ function opts = parseinput (input)
 endfunction
 
 function [edges, s, si] = bmselect (bm, d, dl, dh, haslim)
+  s  = [];
+  si = [];
   switch (bm)
     case "auto"
       edges = bmauto (d, dl, dh, haslim);
@@ -293,8 +287,6 @@ function edges = bmscott (d, dl, dh, haslim)
 endfunction
 
 function [edges, s, si] = bmfd (d, dl, dh, haslim)
-  
-if(false)
   n = numel (d);
   if (n > 1)
     [s, si] = sort(d);
@@ -321,37 +313,6 @@ if(false)
       edges = pickbinsbl (d, d, dl, dh, bw);
     endif
   endif
-else
-  n = numel (d);
-  if (n > 1)
-    
-    s = [];
-    si = [];
-    
-    dr = max (d(:)) - min (d(:));
-    iq = max (iqr (d(:)), double (dr) / 10);
-    bw = 2 * iq * n ^ (-1 / 3);
-    
-    if (! haslim)
-      edges = pickbins (dl, dh, [], bw);
-    else
-      edges = pickbinsbl (min (d(:)), max (d(:)), dl, dh, bw);
-    endif
-    
-  else
-    dr = 0;
-    bw = 1;
-    
-    s = [];
-    si = [];
-    
-    if (! haslim)
-      edges = pickbins (dl, dh, [], bw);
-    else
-      edges = pickbinsbl (d, d, dl, dh, bw);
-    endif
-  endif
-endif
 endfunction
 
 function edges = bmintegers (d, dl, dh, haslim, maxbins)
