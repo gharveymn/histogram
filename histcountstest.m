@@ -1,25 +1,28 @@
 function res = histcountstest(ts)
 	
-	for i = 1:numel(ts.tests)
-		args = {};
-		if(~isempty(ts.tests(i).BinEdges))
-			args = [args, {'BinEdges', ts.tests(i).BinEdges}];
+	res = cell(1, numel(ts));
+	for j = 1:numel(ts)
+		currts = ts(j);
+		for i = 1:numel(currts.tests)
+			args = {};
+			if(~isempty(currts.tests(i).BinEdges))
+				args = [args, {'BinEdges', currts.tests(i).BinEdges}];
+			end
+
+			if(~isempty(currts.tests(i).NumBins))
+				args = [args, {'NumBins', currts.tests(i).NumBins}];
+			end
+
+			if(~isempty(currts.tests(i).Normalization))
+				args = [args, {'Normalization', currts.tests(i).Normalization}];
+			end
+
+			if(~isempty(currts.tests(i).BinMethod))
+				args = [args, {'BinMethod', currts.tests(i).BinMethod}];
+			end
+
+			[res{j}(i).c, res{j}(i).e, res{j}(i).b] = histcounts(currts.data, args{:});
 		end
-		
-		if(~isempty(ts.tests(i).NumBins))
-			args = [args, {'NumBins', ts.tests(i).NumBins}];
-		end
-		
-		if(~isempty(ts.tests(i).Normalization))
-			args = [args, {'Normalization', ts.tests(i).Normalization}];
-		end
-		
-		if(~isempty(ts.tests(i).BinMethod))
-			args = [args, {'BinMethod', ts.tests(i).BinMethod}];
-		end
-		
-		[res(i).c, res(i).e, res(i).b] = histcounts(ts.data, args{:});
-		
 	end
 	
 end

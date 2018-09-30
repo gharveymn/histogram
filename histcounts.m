@@ -142,7 +142,7 @@ function [counts,edges,binidx] = histcounts (data, varargin)
       case "probability"
         counts = counts / numel (data);
       case "pdf"
-      counts = counts / numel (data) ./ double (diff (edges));
+        counts = counts / numel (data) ./ double (diff (edges));
       case "cdf"
         counts = cumsum (counts / numel (data));
     endswitch
