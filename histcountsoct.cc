@@ -437,7 +437,6 @@ static octave_value_list hco_RunBinningFunc(CD in_data, CE in_edges, sortmode so
       return hco_CountNormal(in_data, in_edges, data_sz, counts_sz, nargout);
     }
   }
-  
 }
 
 template <class CD>

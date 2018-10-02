@@ -5,14 +5,23 @@ function res = histcountstest(ts)
 		currts = ts(j);
 		for i = 1:numel(currts.tests)
 			args = {};
+			
+			if(~isempty(currts.tests(i).NumBins))
+				args = [args, {'NumBins', currts.tests(i).NumBins}];
+			end
+			
 			if(~isempty(currts.tests(i).BinEdges))
 				args = [args, {'BinEdges', currts.tests(i).BinEdges}];
 			end
 
-			if(~isempty(currts.tests(i).NumBins))
-				args = [args, {'NumBins', currts.tests(i).NumBins}];
+			if(~isempty(currts.tests(i).BinLimits))
+				args = [args, {'BinLimits', currts.tests(i).BinLimits}];
 			end
-
+			
+			if(~isempty(currts.tests(i).BinWidth))
+				args = [args, {'BinWidth', currts.tests(i).BinWidth}];
+			end
+			
 			if(~isempty(currts.tests(i).Normalization))
 				args = [args, {'Normalization', currts.tests(i).Normalization}];
 			end

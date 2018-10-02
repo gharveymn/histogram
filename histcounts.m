@@ -1,3 +1,28 @@
+## Copyright (C) 2018-2018 Gene Harvey
+##
+## This file is part of Octave.
+##
+## Octave is free software: you can redistribute it and/or modify it
+## under the terms of the GNU General Public License as published by
+## the Free Software Foundation, either version 3 of the License, or
+## (at your option) any later version.
+##
+## Octave is distributed in the hope that it will be useful, but
+## WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with Octave; see the file COPYING.  If not, see
+## <https://www.gnu.org/licenses/>.
+
+## -*- texinfo -*-
+## @deftypefn  {} {[@var{counts}, @var{edges}, @var{binidx}] =} histcounts (@var{A})
+## @deftypefnx {} {[@var{counts}, @var{edges}, @var{binidx}] =} histcounts (@var{A}, @var{nbins})
+## @deftypefnx {} {[@var{counts}, @var{edges}, @var{binidx}] =} histcounts (@var{A}, @var{edges})
+## @deftypefnx {} {[@var{counts}, @var{edges}, @var{binidx}] =} histcounts (@dots{}, @var{prop}, @var{val}, @dots{})
+
+
 function [counts,edges,binidx] = histcounts (data, varargin)
  
   MAXBINS = 65536;
@@ -126,6 +151,7 @@ function [counts,edges,binidx] = histcounts (data, varargin)
     counts = histcountsoct (data, edges, ! isempty(s));
   else
     if (! isempty (s))
+      s = reshape(s, size(data));
       [counts, binidx] = histcountsoct (s, edges, true);
       binidx(si) = binidx;
     else
@@ -418,7 +444,7 @@ function edges = pickbins (dl, dh, innumbins, inbw)
           bw = leftord * ceil (leftl ./ leftord);
         endif
         
-        numbins = innumbins
+        numbins = innumbins;
         right = min (max ( left + numbins .* bw, dh), realmax (class (dh))); 
         
       endif
@@ -465,27 +491,6 @@ function edges = pickbinsbl (dl, dh, llim, hlim, bw)
   else
     edges = [llin,hlim];
   endif
-  
-endfunction
-
-function [counts, binidx] = histcountsbits (data, edges)
-	counts = zeros(1, numel(edges)-1);
-	if(nargout == 2)
-		binidx = zeros(size(data));
-		for i = 1:numel(edges)-2
-			l = (data >= edges(i)) & (data < edges(i+1));
-			counts(i) = sum(l);
-			binidx(l) = i;
-		endfor
-		l = (data >= edges(end-1)) & (data <= edges(end));
-		counts(end) = sum(l);
-		binidx(l) = numel(counts);
-	else
-		for i = 1:numel(edges)-2
-			counts(i) = sum((data >= edges(i)) & (data < edges(i+1)));
-		endfor
-		counts(end) = sum((data >= edges(end-1)) & (data <= edges(end)));
-	endif
 endfunction
 
 function iq = sortediqr(x)

@@ -1,3 +1,4 @@
 histcountsoct.o
 histcountsoct.oct
 *.mat
+.clang-format
