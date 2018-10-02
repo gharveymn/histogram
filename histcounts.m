@@ -20,8 +20,150 @@
 ## @deftypefn  {} {[@var{counts}, @var{edges}, @var{binidx}] =} histcounts (@var{A})
 ## @deftypefnx {} {[@var{counts}, @var{edges}, @var{binidx}] =} histcounts (@var{A}, @var{nbins})
 ## @deftypefnx {} {[@var{counts}, @var{edges}, @var{binidx}] =} histcounts (@var{A}, @var{edges})
-## @deftypefnx {} {[@var{counts}, @var{edges}, @var{binidx}] =} histcounts (@dots{}, @var{prop}, @var{val}, @dots{})
-
+## @deftypefnx {} {[@var{counts}, @var{edges}, @var{binidx}] =} histcounts (@var{A}, @dots{}, @var{prop}, @var{val}, @dots{})
+## Calculate histogram binning counts.
+##
+## In the simplest case, one may get the binning counts with 
+##
+## @example
+## @var{counts} = histcounts (@var{A})
+## @end example
+##
+## @noindent
+## where @var{A} can by any numeric N-dimensional array, and @var{counts} is a 
+## row vector.
+##
+## The edges used to calculate bin counts are returned with 
+##
+## @example
+## [@var{counts}, @var{edges}] = histcounts (@var{A});
+## @end example
+##
+## @noindent
+## where @var{edges} is a row vector of length @code{numel (@var{counts}) + 1}.
+##
+## The bin index of each element in @var{A} is returned with 
+##
+## @example
+## [@var{counts}, @var{edges}, @var{binidx}] = histcounts (@var{A});
+## @end example
+##
+## @noindent
+## where @var{binidx} has the same dimensions as @var{A}.
+##
+## The number of bins may be specified with a positive numeric or logical 
+## integer scalar.  The syntax for this is 
+##
+## @example
+## @var{counts} = histcounts (@var{A}, @var{nbins});
+## @end example
+##
+## The bin edges may be specified by a non-decreasing numeric or logical 
+## vector.  Accomplish this with 
+##
+## @example
+## @var{counts} = histcounts (@var{A}, @var{edges});
+## @end example
+## 
+## @noindent
+## Specifying the bin edges is incompatible with all properties except 
+## the @qcode{"Normalization"} property.
+##
+## Properties:
+##
+## @table @asis
+## @item "NumBins"
+## The number of bins to use.  This must be a positive numeric or logical 
+## integer scalar.
+##
+## @item "BinEdges"
+## The edges for which to bin the input @var{A}.  This must be a non-decreasing 
+## numeric or logical vector. This property is incompatible with all properties 
+## except the @qcode{"Normalization"} property.
+##
+## @item "BinWidth"
+## The width of bins to use.  A limit of 65536 bins is imposed to prevent 
+## creation of too many bins.  If this limit is hit, then the bin width
+## is increased to accommodate for this.
+##
+## @item "BinLimits"
+## The minimum and maximum of created bins.  Counts will be taken only from 
+## elements in @var{A} between the limits (inclusive).  This must be a two-
+## element non-decreasing numeric or logical vector.
+##
+## @item "Normalization"
+## The normalization algorithm applied to @var{counts} before return.  The 
+## available algorithms are:
+##
+## @table @asis
+## @item "count"
+## [default] The number of counts in each bin using standard histogram 
+## technique.
+##
+## @item "probability"
+## The probability of an observation being in each bin. Each bin is divided by 
+## the number of elements in @var{A}.  Note that the number of elements 
+## includes elements that may not have been counted because they were outside 
+## of the range of bin edges.
+##
+## @item "countdensity"
+## The density of counts in each bin.  The counts in each bin are divided by 
+## the bin width (element-wise).
+##
+## @item "pdf"
+## An estimate of the probability density function.  This is the number counts 
+## in each bin divided by the total number of observations divided by the 
+## bin width (element-wise).
+##
+## @item "cumcount"
+## A cumulative sum given by the addition of each bin and all previous bins.
+##
+## @item "cdf"
+## An estimate of the cumulative density function.  This is a cumulative sum 
+## of the bins divided by the number of elements in @var{A}.  Note that the 
+## number of elements includes elements that may not have been counted because 
+## they were outside of the range of bin edges.
+##
+## @end table
+##
+## @item "BinMethod"
+## The method used to automatically calculate edges for the binning of @var{A}.
+## The available methods are:
+##
+## @table @asis
+## @item "auto"
+## [default] Use an automatic algorithm for calculating the bin edges.  If 
+## @var{A} is integer data, then this will most likely use the 
+## @qcode{"integers"} method.  Otherwise it will use the @qcode{"scott"} 
+## method.
+##
+## @item "scott"
+## Use Scott's rule to calculate the bin edges.  The edges are calculated with
+## @code{7/2 * std (@var{A}(:)) * numel (@var{A}) ^ (-1 / 3)}.  This is ideal
+## for data which is close to Gaussian.
+##
+## @item "fd"
+## Use the Freedman-Diaconis rule. The edges are calculated with 
+## @code{2 * iqr (@var{A}(:)) * numel (@var{A}) ^ (-1 / 3)}.  This method is 
+## ideal for data with outliers.
+##
+## @item "integers"
+## Create an individual bin for each point of integer data.  The bins are 
+## offset by 1/2 whole number.  This is the case unless the range of @var{A} 
+## is greater than 65536, in which case lerger bin widths are used.
+##
+## @item "sturges"
+## Use Sturges' rule to calculate bin edges.  The edges are calcuated with 
+## @code{ceil (1 + log2 (numel (@var{A})))}.
+##
+## @item "sqrt"
+## Use the square root rule to calculate bin edges.  The edges are calculated 
+## with @code{ceil (sqrt (numel (@var{A})))}.
+## @end table
+## @end table
+##
+## @seealso{histc, hist}
+## @end deftypefn
 
 function [counts,edges,binidx] = histcounts (data, varargin)
  
