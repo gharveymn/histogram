@@ -30,8 +30,8 @@
 ## @end example
 ##
 ## @noindent
-## where @var{A} can by any numeric N-dimensional array, and @var{counts} is a 
-## row vector.
+## where @var{A} can by any numeric or logical N-dimensional array, and 
+## @var{counts} is a row vector.
 ##
 ## The edges used to calculate bin counts are returned with 
 ##
@@ -67,7 +67,7 @@
 ## 
 ## @noindent
 ## Specifying the bin edges is incompatible with all properties except 
-## the @qcode{"Normalization"} property.
+## the @qcode{"Normalization"} and @qcode{"BinEdges"} properties.
 ##
 ## Properties:
 ##
@@ -78,8 +78,8 @@
 ##
 ## @item "BinEdges"
 ## The edges for which to bin the input @var{A}.  This must be a non-decreasing 
-## numeric or logical vector. This property is incompatible with all properties 
-## except the @qcode{"Normalization"} property.
+## numeric or logical vector.  This property is incompatible with all other
+## properties except the @qcode{"Normalization"} property.
 ##
 ## @item "BinWidth"
 ## The width of bins to use.  A limit of 65536 bins is imposed to prevent 
@@ -101,7 +101,7 @@
 ## technique.
 ##
 ## @item "probability"
-## The probability of an observation being in each bin. Each bin is divided by 
+## The probability of an observation being in each bin.  Each bin is divided by 
 ## the number of elements in @var{A}.  Note that the number of elements 
 ## includes elements that may not have been counted because they were outside 
 ## of the range of bin edges.
@@ -166,12 +166,10 @@
 ## @end deftypefn
 
 function [counts,edges,binidx] = histcounts (data, varargin)
- 
-  MAXBINS = 65536;
 
   validateattributes (data, {"numeric", "logical"}, {"real"}, "histcounts");
-  isedgestrans = false;
   
+  ## used if we sort data later
   s  = [];
   si = [];
   
@@ -181,12 +179,7 @@ function [counts,edges,binidx] = histcounts (data, varargin)
       currin = varargin{1};
       validateattributes (currin, {"numeric", "logical"}, {"vector",...
                          "nonempty", "real", "nondecreasing"}, "histcounts");
-      if (iscolumn (currin))
-        edges = currin.';
-        isedgestrans = true;
-      else
-        edges = currin;
-      endif
+      edges = currin;
     else
       if (! isfloat (data))
         datacol = data(:);
@@ -210,40 +203,39 @@ function [counts,edges,binidx] = histcounts (data, varargin)
       endif
     endif
   else
+    
+    ## parse property-key pairs
     ins = parseinput(varargin);
-
+    
     if (isempty (ins.BinLimits))
       if (! isempty (ins.BinEdges))
-        if (iscolumn (ins.BinEdges))
-          edges = ins.BinEdges.';
-          isedgestrans = true;
-        else
-          edges = ins.BinEdges;
-        endif
+        edges = ins.BinEdges;
       else
         if (! isfloat (data))
           datacol = data(:);
           datamin = double(min(datacol));
           datamax = double(max(datacol));        
         else
+          ## operate on finite data only
           datacol = data(isfinite(data));
           datamin = min (datacol);
-          datamax = max (datacol);       
+          datamax = max (datacol);
         endif
-
-        if (! isempty (ins.NumBins))
+        
+        if (! isempty (ins.NumBins)) ## NumBins
           datarange = datamax - datamin;
           numbins   = double (ins.NumBins);
           edges = pickbins (datamin, datamax, numbins, datarange/numbins);
-        elseif (! isempty (ins.BinWidth))
+        elseif (! isempty (ins.BinWidth)) ## BinWidth
           if (! isfloat (ins.BinWidth))
+            ## make sure bin width are double
             ins.BinWidth = double (ins.BinWidth);
           endif
           datarange = datamax - datamin;
           if (! isempty (datamin))
             left = ins.BinWidth * floor (datamin / ins.BinWidth);
             numbins = max (1, ceil ((datamax - left) ./ ins.BinWidth));
-            if (numbins > MAXBINS)
+            if (numbins > MAXBINS) ## adjust if we hit the bin limit
               ins.BinWidth = datarange/(MAXBINS-1);
               left = ins.BinWidth * floor (datamin / ins.BinWidth);
               if (datamax <= left + (numbins - 1) * ins.BinWidth)
@@ -252,14 +244,17 @@ function [counts,edges,binidx] = histcounts (data, varargin)
               endif
             endif
             edges = left + (0:numbins) .* ins.BinWidth;
-          else
+          else ## occurs if no finite data or empty data
             edges = cast ([0, ins.BinWidth], class (datarange));
           endif
         else
-          [edges,s,si] = bmselect (ins.BinMethod, datacol, datamin, datamax, false);
+          ## execute the binning method
+          [edges,s,si] = bmselect (ins.BinMethod, datacol, datamin, datamax,...
+                                   false);
         endif
       endif
     else
+      ## similar to above branch, but with limits
       if (! isfloat (ins.BinLimits))
         datamin = double (ins.BinLimits(1));
         datamax = double (ins.BinLimits(2));
@@ -286,39 +281,59 @@ function [counts,edges,binidx] = histcounts (data, varargin)
       endif
     endif
   endif
-
+  
+  ## make sure edges aren't sparse
   edges = full(edges);
   
+  ## do binning
   if (nargout <= 2)
-    counts = histcountsoct (data, edges, ! isempty(s));
+    if (! isempty (s))
+      counts = histcountsbin (s, edges, true);
+    else
+      counts = histcountsbin (data, edges, false);
+    endif
   else
     if (! isempty (s))
+      ## this is a column, so reshape it to data dims
       s = reshape(s, size(data));
-      [counts, binidx] = histcountsoct (s, edges, true);
+      [counts, binidx] = histcountsbin (s, edges, true);
+      
+      ## place bin indices into correct places
       binidx(si) = binidx;
     else
-      [counts, binidx] = histcountsoct (data, edges, false);
+      [counts, binidx] = histcountsbin (data, edges, false);
     endif
   endif
 
+  ## apply normalization algorithm
   if (! isempty (ins))
     switch ins.Normalization
       case "countdensity"
-        counts = counts ./ double (diff (edges));
+        ## temp turn off division by zero warnings
+        ws = warning ("off", "Octave:divide-by-zero");
+        
+        counts = counts ./ double (diff (reshape (edges, 1, [])));
+        
+        ## reset warning state
+        warning (ws);
       case "cumcount"
         counts = cumsum (counts);
       case "probability"
+        ws = warning ("off", "Octave:divide-by-zero");
         counts = counts / numel (data);
+        warning (ws);
       case "pdf"
-        counts = counts / numel (data) ./ double (diff (edges));
+        ws = warning ("off", "Octave:divide-by-zero");
+        counts = counts / numel (data) ...
+                 ./ double (diff (reshape (edges, 1, [])));
+        warning (ws);
       case "cdf"
+        ws = warning ("off", "Octave:divide-by-zero");
         counts = cumsum (counts / numel (data));
+        warning (ws);
     endswitch
   endif
-
-  if (nargin > 1 && isedgestrans)
-    edges = edges.';
-  endif
+  
 endfunction
 
 function opts = parseinput (input)
@@ -332,34 +347,35 @@ function opts = parseinput (input)
   if (isnumeric (currin) || islogical (currin))
     if (isscalar (currin))
       validateattributes (currin, {"numeric", "logical"}, {"integer",...
-                          "positive"}, "histcounts", idx + 1);
+                          "positive"}, "histcounts", "nbins", idx + 1);
       opts.NumBins   = currin;
       opts.BinMethod = [];
     else
       validateattributes (currin, {"numeric", "logical"}, {"vector", ...
                           "nonempty", "real", "nondecreasing"},...
-                          "histcounts", idx + 1);
-      opts.NumEdges  = currin;
+                          "histcounts", "edges", idx + 1);
+      opts.BinEdges  = currin;
       opts.BinMethod = [];
     endif
     idx += 1;
   endif
   
   ## parse name-val pairs
-  if (rem (length(input)-idx+1, 2) != 0)
-    error ("histcount: each name argument must have a value pair");
+  if (rem (length (input) - idx + 1, 2) != 0)
+    error ("histcounts: each name argument must have a value pair");
   endif
   
   validnames = {"NumBins", "BinEdges", "BinWidth", "BinLimits",...
                 "Normalization", "BinMethod"};
   
   for j = idx:2:length(input)
-    name  = validatestring (input{j}, validnames, "histcounts", j + 1);
+    name  = validatestring (input{j}, validnames, "histcounts");
     value = input{j+1};
     switch (name)
       case "NumBins"
         validateattributes (value, {"numeric", "logical"}, {"scalar",...
-                            "integer", "positive"}, "histcounts", "NumBins", j + 2);
+                            "integer", "positive"}, "histcounts", "NumBins",...
+                            j + 2);
         if (! isempty (opts.BinEdges))
           error ("histcounts: invalid mixture of binning inputs");
         endif
@@ -379,7 +395,8 @@ function opts = parseinput (input)
         opts.BinLimits = [];
       case "BinWidth"
         validateattributes (value, {"numeric", "logical"}, {"scalar", "real",...
-                            "positive", "finite"}, "histcounts", "BinWidth", j + 2);
+                            "positive", "finite"}, "histcounts", "BinWidth",...
+                            j + 2);
         if (! isempty (opts.BinEdges))
           error ("histcounts: invalid mixture of binning inputs");
         endif
@@ -433,9 +450,11 @@ endfunction
 
 function edges = bmauto (d, dl, dh, haslim)
   dr = dh - dl;
-  if (! isempty (d) && (isinteger (d) || islogical (d)...
-      || isequal (round (d), d)) && dr <= 50 ...
-      && dh <= flintmax (class (dh)) / 2 && dl >= -flintmax( class (dl)) / 2)
+  ## normally uses integer binning unless range is larger than 50
+  if (! isempty (d) 
+      && (isinteger (d) || islogical (d) || isequal (round (d), d)) 
+      && dr <= 50 && dh <= flintmax (class (dh)) / 2
+      && dl >= -flintmax( class (dl)) / 2)
     edges = bmintegers (d, dl, dh, haslim, MAXBINS);
   else
     edges = bmscott (d, dl, dh, haslim);
@@ -446,7 +465,15 @@ function edges = bmscott (d, dl, dh, haslim)
   if (! isfloat (d))
     d = double (d);
   endif
+  
+  ## temp turn off division by zero warnings
+  ws = warning ("off", "Octave:divide-by-zero");
+  
   bw = 3.5 * std (d) / (numel (d) ^ (1/3));
+  
+  ## reset warning state
+  warning (ws)
+  
   if (! haslim)
     edges = pickbins (dl, dh, [], bw);
   else
@@ -457,6 +484,8 @@ endfunction
 function [edges, s, si] = bmfd (d, dl, dh, haslim)
   n = numel (d);
   if (n > 1)
+    
+    ## becomes efficient to sort here for iqr and the binning
     [s, si] = sort(d);
     dr = s(end) - s(1);
     iq = max (sortediqr (s(:)), double (dr) / 10);
@@ -516,7 +545,7 @@ function edges = bmintegers (d, dl, dh, haslim, maxbins)
     else
       dlh = ceil (dl) + 0.5;
       dhl = floor (dh) - 0.5;
-      edges = [dl, (dlh:bw:dhl), dh];
+      edges = [dl, (dlh:dhl), dh];
     endif
   endif
 endfunction
@@ -524,7 +553,7 @@ endfunction
 function edges = bmsqrt (d, dl, dh, haslim)
   numbins = max (ceil (sqrt (numel (d))), 1);
   if (! haslim)
-    bw = (dh-dl)/numbins;
+    bw = (dh - dl) / numbins;
     if (isfinite (bw))
       edges = pickbins (dl, dh, [], bw);
     else
@@ -538,7 +567,7 @@ endfunction
 function edges = bmsturges (d, dl, dh, haslim)
   numbins = max ( ceil (log2 (numel (d)) + 1), 1);
   if (! haslim)
-    bw = (dh-dl)/numbins;
+    bw = (dh - dl) / numbins;
     if (isfinite (bw))
       edges = pickbins (dl, dh, [], bw);
     else
@@ -614,7 +643,7 @@ function edges = pickbins (dl, dh, innumbins, inbw)
   else
     
     if (! isempty (innumbins))
-      edges = cast (0:numbins, class (dl));
+      edges = cast (0:innumbins, class (dl));
     else
       edges = cast ([0,1], class (dl));
     endif
@@ -631,7 +660,7 @@ function edges = pickbinsbl (dl, dh, llim, hlim, bw)
     numbins = max (ceil ((hlim - llim) / bw), 1);
     edges = linspace (llim, hlim, numbins + 1);
   else
-    edges = [llin,hlim];
+    edges = [llim,hlim];
   endif
 endfunction
 

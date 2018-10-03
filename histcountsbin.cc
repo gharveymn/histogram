@@ -4,7 +4,7 @@
 #define HCO_DEBUG 0
 
 static bool
-hco_CheckEvenSpacing (Matrix in_edges, octave_idx_type counts_sz)
+hco_CheckEvenSpacing (NDArray in_edges, octave_idx_type counts_sz)
 {
   octave_idx_type i;
   double spacing = in_edges(1) - in_edges(0);
@@ -20,7 +20,7 @@ hco_CheckEvenSpacing (Matrix in_edges, octave_idx_type counts_sz)
 }
 
 static bool
-hco_CheckEvenSpacing (FloatMatrix in_edges, octave_idx_type counts_sz)
+hco_CheckEvenSpacing (FloatNDArray in_edges, octave_idx_type counts_sz)
 {
   octave_idx_type i;
   float spacing = in_edges(1) - in_edges(0);
@@ -56,7 +56,7 @@ static octave_value_list
 hco_CountNormal (CD in_data, CE in_edges, octave_idx_type data_sz,
                  octave_idx_type counts_sz, int nargout)
 {
-  Matrix binidx;
+  NDArray binidx;
   octave_idx_type i, j;
 
 #if HCO_DEBUG
@@ -67,7 +67,7 @@ hco_CountNormal (CD in_data, CE in_edges, octave_idx_type data_sz,
   counts.fill (0);
   if (nargout == 2)
     {
-      binidx = Matrix (in_data.dims ());
+      binidx = NDArray (in_data.dims ());
       binidx.fill (0);
     }
 
@@ -105,10 +105,10 @@ hco_CountNormal (CD in_data, CE in_edges, octave_idx_type data_sz,
 
 template <class CD>
 static octave_value_list
-hco_CountEvenSpacing (CD in_data, Matrix in_edges, octave_idx_type data_sz,
+hco_CountEvenSpacing (CD in_data, NDArray in_edges, octave_idx_type data_sz,
                       octave_idx_type counts_sz, int nargout)
 {
-  Matrix binidx;
+  NDArray binidx;
   octave_idx_type i, j;
 
   double spacing = in_edges(1) - in_edges(0);
@@ -121,7 +121,7 @@ hco_CountEvenSpacing (CD in_data, Matrix in_edges, octave_idx_type data_sz,
   counts.fill (0);
   if (nargout == 2)
     {
-      binidx = Matrix (in_data.dims ());
+      binidx = NDArray (in_data.dims ());
       binidx.fill (0);
     }
 
@@ -192,11 +192,11 @@ hco_CountEvenSpacing (CD in_data, Matrix in_edges, octave_idx_type data_sz,
 
 template <class CD>
 static octave_value_list
-hco_CountEvenSpacing (CD in_data, FloatMatrix in_edges,
+hco_CountEvenSpacing (CD in_data, FloatNDArray in_edges,
                       octave_idx_type data_sz, octave_idx_type counts_sz,
                       int nargout)
 {
-  Matrix binidx;
+  NDArray binidx;
   octave_idx_type i, j;
 
   float spacing = in_edges(1) - in_edges(0);
@@ -209,7 +209,7 @@ hco_CountEvenSpacing (CD in_data, FloatMatrix in_edges,
   counts.fill (0);
   if (nargout == 2)
     {
-      binidx = Matrix (in_data.dims ());
+      binidx = NDArray (in_data.dims ());
       binidx.fill (0);
     }
 
@@ -280,7 +280,7 @@ static octave_value_list
 hco_CountEvenSpacing (CD in_data, CE in_edges, octave_idx_type data_sz,
                       octave_idx_type counts_sz, int nargout)
 {
-  Matrix binidx;
+  NDArray binidx;
   octave_idx_type i, j;
 
   typename CE::element_type spacing = in_edges(1) - in_edges(0);
@@ -293,7 +293,7 @@ hco_CountEvenSpacing (CD in_data, CE in_edges, octave_idx_type data_sz,
   counts.fill (0);
   if (nargout == 2)
     {
-      binidx = Matrix (in_data.dims ());
+      binidx = NDArray (in_data.dims ());
       binidx.fill (0);
     }
 
@@ -344,7 +344,7 @@ static octave_value_list
 hco_CountSorted (CD in_data, CE in_edges, octave_idx_type data_sz,
                  octave_idx_type counts_sz, int nargout, sortmode sort_mode)
 {
-  Matrix binidx;
+  NDArray binidx;
   octave_idx_type i, j;
 
 #if HCO_DEBUG
@@ -356,7 +356,7 @@ hco_CountSorted (CD in_data, CE in_edges, octave_idx_type data_sz,
 
   if (nargout == 2)
     {
-      binidx = Matrix (in_data.dims ());
+      binidx = NDArray (in_data.dims ());
       binidx.fill (0);
     }
 
@@ -456,12 +456,12 @@ hco_ParseEdgesArg (CD in_data, octave_value in_edges_arg, sortmode sort_mode,
 {
   if (in_edges_arg.is_double_type ())
     {
-      return hco_RunBinningFunc (in_data, in_edges_arg.matrix_value (),
+      return hco_RunBinningFunc (in_data, in_edges_arg.array_value (),
                                  sort_mode, nargout);
     }
   else if (in_edges_arg.isfloat ())
     {
-      return hco_RunBinningFunc (in_data, in_edges_arg.float_matrix_value (),
+      return hco_RunBinningFunc (in_data, in_edges_arg.float_array_value (),
                                  sort_mode, nargout);
     }
   else if (in_edges_arg.is_int8_type ())
@@ -522,12 +522,12 @@ hco_ParseDataArg (octave_value in_data_arg, octave_value in_edges_arg,
 {
   if (in_data_arg.is_double_type ())
     {
-      return hco_ParseEdgesArg (in_data_arg.matrix_value (), in_edges_arg,
+      return hco_ParseEdgesArg (in_data_arg.array_value (), in_edges_arg,
                                 sort_mode, nargout);
     }
   else if (in_data_arg.isfloat ())
     {
-      return hco_ParseEdgesArg (in_data_arg.float_matrix_value (),
+      return hco_ParseEdgesArg (in_data_arg.float_array_value (),
                                 in_edges_arg, sort_mode, nargout);
     }
   else if (in_data_arg.is_int8_type ())
@@ -582,7 +582,7 @@ hco_ParseDataArg (octave_value in_data_arg, octave_value in_edges_arg,
     }
 }
 
-DEFUN_DLD (histcountsoct, args, nargout,
+DEFUN_DLD (histcountsbin, args, nargout,
            "internal function for binning in histcounts")
 {
   if (args.length () != 3)

@@ -2,7 +2,7 @@ function ts = histcountstestgen
 	
 	%% 1
 	
-	x = rand(100000,1);
+	x = rand(1000,1);
 	
 	nbins     = {[], 1, 100};
 	edges     = {[], sort(rand(10, 1)), sort(rand(1, 10)),...
@@ -13,11 +13,12 @@ function ts = histcountstestgen
 	normtypes = {[], 'count','probability','countdensity','pdf','cumcount','cdf'};
 	bms       = {[], 'auto','scott','fd','integers','sturges','sqrt'};
 
-	A1 = allcomb({[]}, edges, {[]}, {[]}, normtypes, {[]});
-	A2 = allcomb(nbins, {[]}, binlims, binwidth, normtypes, bms);
+	A1 = allcomb({[]}, edges, {[]}, edges, {[]},    {[]},     normtypes, {[]});
+	A2 = allcomb(nbins, {[]}, nbins, {[]}, binlims, binwidth, normtypes, bms);
 	A = [A1; A2];
 	
-	t = cell2struct(A,{'NumBins','BinEdges','BinLimits', 'BinWidth',...
+	t = cell2struct(A,{'NumBinsRaw', 'BinEdgesRaw', 'NumBins', ...
+		              'BinEdges','BinLimits', 'BinWidth',...
 				    'Normalization','BinMethod'}, 2);
 				   
 	ts(1).data  = x;
@@ -35,11 +36,12 @@ function ts = histcountstestgen
 	binlims   = {[], [-50,100], [13;20]};
 	binwidth  = {[], 100, 7, 1};
 	
-	A1 = allcomb({[]}, edges, {[]}, {[]}, normtypes, {[]});
-	A2 = allcomb(nbins, {[]}, binlims, binwidth, normtypes, bms);
+	A1 = allcomb({[]}, edges, {[]}, edges, {[]},    {[]},     normtypes, {[]});
+	A2 = allcomb(nbins, {[]}, nbins, {[]}, binlims, binwidth, normtypes, bms);
 	A = [A1; A2];
 	
-	t = cell2struct(A,{'NumBins','BinEdges','BinLimits', 'BinWidth',...
+	t = cell2struct(A,{'NumBinsRaw', 'BinEdgesRaw', 'NumBins', ...
+		              'BinEdges','BinLimits', 'BinWidth',...
 				    'Normalization','BinMethod'}, 2);
 				   
 	ts(2).data = x;
@@ -49,11 +51,12 @@ function ts = histcountstestgen
 	
 	bms       = {[], 'auto','scott','integers','sturges','sqrt'};
 	
-	A1 = allcomb({[]}, edges, {[]}, {[]}, normtypes, {[]});
-	A2 = allcomb(nbins, {[]}, binlims, binwidth, normtypes, bms);
+	A1 = allcomb({[]}, edges, {[]}, edges, {[]},    {[]},     normtypes, {[]});
+	A2 = allcomb(nbins, {[]}, nbins, {[]}, binlims, binwidth, normtypes, bms);
 	A = [A1; A2];
 	
-	t = cell2struct(A,{'NumBins','BinEdges','BinLimits', 'BinWidth',...
+	t = cell2struct(A,{'NumBinsRaw', 'BinEdgesRaw', 'NumBins', ...
+		              'BinEdges','BinLimits', 'BinWidth',...
 				    'Normalization','BinMethod'}, 2);
 	
 	ts(3).data = uint8(x);
@@ -71,11 +74,12 @@ function ts = histcountstestgen
 	
 	bms       = {[], 'auto','scott','fd','integers','sturges','sqrt'};
 	
-	A1 = allcomb({[]}, edges, {[]}, {[]}, normtypes, {[]});
-	A2 = allcomb(nbins, {[]}, binlims, binwidth, normtypes, bms);
+	A1 = allcomb({[]}, edges, {[]}, edges, {[]},    {[]},     normtypes, {[]});
+	A2 = allcomb(nbins, {[]}, nbins, {[]}, binlims, binwidth, normtypes, bms);
 	A = [A1; A2];
 	
-	t = cell2struct(A,{'NumBins','BinEdges','BinLimits', 'BinWidth',...
+	t = cell2struct(A,{'NumBinsRaw', 'BinEdgesRaw', 'NumBins', ...
+		              'BinEdges','BinLimits', 'BinWidth',...
 				    'Normalization','BinMethod'}, 2);
 				   
 	ts(4).data = x;
@@ -85,11 +89,12 @@ function ts = histcountstestgen
 	
 	bms       = {[], 'auto','scott','integers','sturges','sqrt'};
 	
-	A1 = allcomb({[]}, edges, {[]}, {[]}, normtypes, {[]});
-	A2 = allcomb(nbins, {[]}, binlims, binwidth, normtypes, bms);
+	A1 = allcomb({[]}, edges, {[]}, edges, {[]},    {[]},     normtypes, {[]});
+	A2 = allcomb(nbins, {[]}, nbins, {[]}, binlims, binwidth, normtypes, bms);
 	A = [A1; A2];
 	
-	t = cell2struct(A,{'NumBins','BinEdges','BinLimits', 'BinWidth',...
+	t = cell2struct(A,{'NumBinsRaw', 'BinEdgesRaw', 'NumBins', ...
+		              'BinEdges','BinLimits', 'BinWidth',...
 				    'Normalization','BinMethod'}, 2);
 	
 	ts(5).data = uint8(x);
@@ -97,7 +102,7 @@ function ts = histcountstestgen
 	
 	%% 6
 	
-	x = rand(300);
+	x = rand(30);
 	
 	nbins     = {[], 1, 100};
 	edges     = {[], sort(rand(10, 1)), sort(rand(1, 10)),...
@@ -108,16 +113,65 @@ function ts = histcountstestgen
 	normtypes = {[], 'count','probability','countdensity','pdf','cumcount','cdf'};
 	bms       = {[], 'auto','scott','fd','integers','sturges','sqrt'};
 
-	A1 = allcomb({[]}, edges, {[]}, {[]}, normtypes, {[]});
-	A2 = allcomb(nbins, {[]}, binlims, binwidth, normtypes, bms);
+	A1 = allcomb({[]}, edges, {[]}, edges, {[]},    {[]},     normtypes, {[]});
+	A2 = allcomb(nbins, {[]}, nbins, {[]}, binlims, binwidth, normtypes, bms);
 	A = [A1; A2];
 	
-	t = cell2struct(A,{'NumBins','BinEdges','BinLimits', 'BinWidth',...
+	t = cell2struct(A,{'NumBinsRaw', 'BinEdgesRaw', 'NumBins', ...
+		              'BinEdges','BinLimits', 'BinWidth',...
 				    'Normalization','BinMethod'}, 2);
 				   
-	ts(1).data  = x;
-	ts(1).tests = t;
+	ts(6).data  = x;
+	ts(6).tests = t;
 	
+	%% 7
 	
+	x = [];
+	
+	nbins     = {[], 1, 100};
+	edges     = {[], sort(rand(10, 1)), sort(rand(1, 10)),...
+			   sort([rand(50,1); 0.4213; 0.4213]),...
+			   sort([rand(50,1); 0.4213; 0.4213; 0.4213])};
+	binlims   = {[], [-1,2], [.3;.7]};
+	binwidth  = {[], 5, 1, .3};
+	normtypes = {[], 'count','probability','countdensity','pdf','cumcount','cdf'};
+	bms       = {[], 'auto','scott','fd','integers','sturges','sqrt'};
+
+	A1 = allcomb({[]}, edges, {[]}, edges, {[]},    {[]},     normtypes, {[]});
+	A2 = allcomb(nbins, {[]}, nbins, {[]}, binlims, binwidth, normtypes, bms);
+	A = [A1; A2];
+	
+	t = cell2struct(A,{'NumBinsRaw', 'BinEdgesRaw', 'NumBins', ...
+		              'BinEdges','BinLimits', 'BinWidth',...
+				    'Normalization','BinMethod'}, 2);
+				   
+	ts(7).data  = x;
+	ts(7).tests = t;
+	
+	%% 7
+	
+	x = 0.5;
+	
+	nbins     = {[], 1, 100};
+	edges     = {[], sort(rand(10, 1)), sort(rand(1, 10)),...
+			   sort([rand(50,1); 0.4213; 0.4213]),...
+			   sort([rand(50,1); 0.4213; 0.4213; 0.4213])};
+	binlims   = {[], [-1,2], [.3;.7]};
+	binwidth  = {[], 5, 1, .3};
+	normtypes = {[], 'count','probability','countdensity','pdf','cumcount','cdf'};
+	bms       = {[], 'auto','scott','fd','integers','sturges','sqrt'};
+
+	A1 = allcomb({[]}, edges, {[]}, edges, {[]},    {[]},     normtypes, {[]});
+	A2 = allcomb(nbins, {[]}, nbins, {[]}, binlims, binwidth, normtypes, bms);
+	A = [A1; A2];
+	
+	t = cell2struct(A,{'NumBinsRaw', 'BinEdgesRaw', 'NumBins', ...
+		              'BinEdges','BinLimits', 'BinWidth',...
+				    'Normalization','BinMethod'}, 2);
+				   
+	ts(8).data  = x;
+	ts(8).tests = t;
+	
+	ts = ts(:);
 	
 end
