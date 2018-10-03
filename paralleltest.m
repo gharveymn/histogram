@@ -1,4 +1,4 @@
-load m6.mat
+load m7.mat
 pkg load parallel
 disp ("loaded");
 r1 = pararrayfun (8, @histcountstest, ts);
