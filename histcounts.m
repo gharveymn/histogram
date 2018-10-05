@@ -198,8 +198,8 @@ function [counts,edges,binidx] = histcounts (data, varargin)
         validateattributes (currin, {"numeric", "logical"}, {"integer",...
                             "positive"}, "histcounts");
         datarange = datamax - datamin;
-        numbins   = double (currin);
-        edges = pickbins (datamin, datamax, numbins, datarange/numbins);
+        nbins     = double (currin);
+        edges     = pickbins (datamin, datamax, nbins, datarange/nbins);
       endif
     endif
   else
@@ -224,8 +224,8 @@ function [counts,edges,binidx] = histcounts (data, varargin)
         
         if (! isempty (ins.NumBins)) ## NumBins
           datarange = datamax - datamin;
-          numbins   = double (ins.NumBins);
-          edges = pickbins (datamin, datamax, numbins, datarange/numbins);
+          nbins   = double (ins.NumBins);
+          edges = pickbins (datamin, datamax, nbins, datarange/nbins);
         elseif (! isempty (ins.BinWidth)) ## BinWidth
           if (! isfloat (ins.BinWidth))
             ## make sure bin width are double
@@ -234,16 +234,16 @@ function [counts,edges,binidx] = histcounts (data, varargin)
           datarange = datamax - datamin;
           if (! isempty (datamin))
             left = ins.BinWidth * floor (datamin / ins.BinWidth);
-            numbins = max (1, ceil ((datamax - left) ./ ins.BinWidth));
-            if (numbins > MAXBINS) ## adjust if we hit the bin limit
+            nbins = max (1, ceil ((datamax - left) ./ ins.BinWidth));
+            if (nbins > MAXBINS) ## adjust if we hit the bin limit
               ins.BinWidth = datarange/(MAXBINS-1);
               left = ins.BinWidth * floor (datamin / ins.BinWidth);
-              if (datamax <= left + (numbins - 1) * ins.BinWidth)
+              if (datamax <= left + (nbins - 1) * ins.BinWidth)
                 ins.BinWidth = datarange / MAXBINS;
                 left = datamin;
               endif
             endif
-            edges = left + (0:numbins) .* ins.BinWidth;
+            edges = left + (0:nbins) .* ins.BinWidth;
           else ## occurs if no finite data or empty data
             edges = cast ([0, ins.BinWidth], class (datarange));
           endif
@@ -263,8 +263,8 @@ function [counts,edges,binidx] = histcounts (data, varargin)
         datamax = ins.BinLimits(2);
       endif
       if (! isempty (ins.NumBins))
-        numbins = double (ins.NumBins);
-        edges = [datamin + (0:numbins-1) .* ((datamax - datamin) / numbins),...
+        nbins = double (ins.NumBins);
+        edges = [datamin + (0:nbins-1) .* ((datamax - datamin) / nbins),...
                  datamax];
       elseif (! isempty (ins.BinWidth))
         if (! isfloat (ins.BinWidth))
@@ -277,7 +277,7 @@ function [counts,edges,binidx] = histcounts (data, varargin)
         endif
       else
         datacol = data(data >= datamin & data <= datamax);
-        edges = bmselect (ins.BinMethod, datacol, datamin, datamax, true);
+        edges   = bmselect (ins.BinMethod, datacol, datamin, datamax, true);
       endif
     endif
   endif
@@ -311,21 +311,18 @@ function [counts,edges,binidx] = histcounts (data, varargin)
       case "countdensity"
         ## temp turn off division by zero warnings
         ws = warning ("off", "Octave:divide-by-zero");
-        
-        counts = counts ./ double (diff (reshape (edges, 1, [])));
-        
+        counts ./= double (diff (reshape (edges, 1, [])));       
         ## reset warning state
         warning (ws);
       case "cumcount"
         counts = cumsum (counts);
       case "probability"
         ws = warning ("off", "Octave:divide-by-zero");
-        counts = counts / numel (data);
+        counts /= numel (data);
         warning (ws);
       case "pdf"
         ws = warning ("off", "Octave:divide-by-zero");
-        counts = counts / numel (data) ...
-                 ./ double (diff (reshape (edges, 1, [])));
+        counts ./= (double (diff (reshape (edges, 1, []))) * numel (data));
         warning (ws);
       case "cdf"
         ws = warning ("off", "Octave:divide-by-zero");
@@ -551,34 +548,34 @@ function edges = bmintegers (d, dl, dh, haslim, maxbins)
 endfunction
 
 function edges = bmsqrt (d, dl, dh, haslim)
-  numbins = max (ceil (sqrt (numel (d))), 1);
+  nbins = max (ceil (sqrt (numel (d))), 1);
   if (! haslim)
-    bw = (dh - dl) / numbins;
+    bw = (dh - dl) / nbins;
     if (isfinite (bw))
       edges = pickbins (dl, dh, [], bw);
     else
-      edges = pickbins (dl, dh, numbins, bw);
+      edges = pickbins (dl, dh, nbins, bw);
     endif
   else
-    edges = linspace (dl, dh, numbins + 1);
+    edges = linspace (dl, dh, nbins + 1);
   endif
 endfunction
 
 function edges = bmsturges (d, dl, dh, haslim)
-  numbins = max ( ceil (log2 (numel (d)) + 1), 1);
+  nbins = max ( ceil (log2 (numel (d)) + 1), 1);
   if (! haslim)
-    bw = (dh - dl) / numbins;
+    bw = (dh - dl) / nbins;
     if (isfinite (bw))
       edges = pickbins (dl, dh, [], bw);
     else
-      edges = pickbins (dl, dh, numbins, bw);
+      edges = pickbins (dl, dh, nbins, bw);
     endif
   else
-    edges = linspace (dl, dh, numbins + 1);
+    edges = linspace (dl, dh, nbins + 1);
   endif
 endfunction
 
-function edges = pickbins (dl, dh, innumbins, inbw)
+function edges = pickbins (dl, dh, innbins, inbw)
   if (! isempty (dl))
     ds = max (abs ([dl, dh]));
     dr = dh - dl;
@@ -588,7 +585,7 @@ function edges = pickbins (dl, dh, innumbins, inbw)
       ord   = 10 .^ floor (log10 (inbw));
       relsz = inbw / ord;
       
-      if (isempty (innumbins))
+      if (isempty (innbins))
         if (relsz < 1.5)
           bw = 1*ord;
         elseif (relsz < 2.5)
@@ -601,58 +598,58 @@ function edges = pickbins (dl, dh, innumbins, inbw)
           bw = 10*ord;
         endif
         
-        left = max (min (bw*floor (dl ./ bw), dl), -realmax (class (dh)));
-        numbins = max (1, ceil ((dh - left) ./ bw));
-        right = min ( max (left + numbins .* bw, dh), realmax (class (dh)));
+        left  = max (min (bw*floor (dl ./ bw), dl), -realmax (class (dh)));
+        nbins = max (1, ceil ((dh - left) ./ bw));
+        right = min ( max (left + nbins .* bw, dh), realmax (class (dh)));
         
       else
         bw = ord * floor (relsz);
         left = max (min (bw * floor (dl ./ bw), dl), -realmax (class (dl)));
-        if (innumbins > 1)
-          leftl = (dh - left) / innumbins;
-          lefth = (dh - left) / (innumbins - 1);
+        if (innbins > 1)
+          leftl   = (dh - left) / innbins;
+          lefth   = (dh - left) / (innbins - 1);
           leftord = 10 ^ floor (log10 (lefth - leftl));
-          bw = leftord * ceil (leftl ./ leftord);
+          bw      = leftord * ceil (leftl ./ leftord);
         endif
         
-        numbins = innumbins;
-        right = min (max ( left + numbins .* bw, dh), realmax (class (dh))); 
+        nbins = innbins;
+        right = min (max ( left + nbins .* bw, dh), realmax (class (dh))); 
         
       endif
       
     else
-      if (isempty (innumbins))
-        innumbins = 1;
+      if (isempty (innbins))
+        innbins = 1;
       endif
       
-      br    = max (1, ceil (innumbins * eps (ds)));
+      br    = max (1, ceil (innbins * eps (ds)));
       left  = floor (2 * (dl - br ./ 4)) / 2;
       right = ceil (2 * (dh + br ./ 4)) / 2;
       
-      bw = (right - left) ./ innumbins;
-      numbins = innumbins;
+      bw    = (right - left) ./ innbins;
+      nbins = innbins;
       
     endif
     
     if (! isfinite (bw))
-      edges = linspace (left, right, numbins + 1);
+      edges = linspace (left, right, nbins + 1);
     else
       ## FIXME: For some reason small errors may occur if these steps are not
       ##        done seperately with indexing. Perhaps a problem in underlying 
       ##        system?
-      ##        Example: let left = -120, numbins = 100, bw = 2.45
-      ##                 p1  = left + (1:numbins-1) .* bw;
-      ##                 tmp = (1:numbins-1) .* bw;
+      ##        Example: let left = -120, nbins = 100, bw = 2.45
+      ##                 p1  = left + (1:nbins-1) .* bw;
+      ##                 tmp = (1:nbins-1) .* bw;
       ##                 p2  = left + tmp(1,:);
       ##                 -> p1 != p2
-      tmp = (1:numbins-1) .* bw;
+      tmp = (1:nbins-1) .* bw;
       edges = [left, left + tmp(1,:), right];
     endif
     
   else
     
-    if (! isempty (innumbins))
-      edges = cast (0:innumbins, class (dl));
+    if (! isempty (innbins))
+      edges = cast (0:innbins, class (dl));
     else
       edges = cast ([0,1], class (dl));
     endif
@@ -666,8 +663,8 @@ function edges = pickbinsbl (dl, dh, llim, hlim, bw)
   bw = max (bw, eps (ds));
   
   if (! isempty (dl) && dr > max (sqrt (eps (ds)), realmin (class (ds))))
-    numbins = max (ceil ((hlim - llim) / bw), 1);
-    edges = linspace (llim, hlim, numbins + 1);
+    nbins = max (ceil ((hlim - llim) / bw), 1);
+    edges = linspace (llim, hlim, nbins + 1);
   else
     edges = [llim,hlim];
   endif

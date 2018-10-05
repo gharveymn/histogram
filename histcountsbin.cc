@@ -1,8 +1,6 @@
 #include <limits>
 #include <octave/oct.h>
 
-#define HCO_DEBUG 0
-
 static bool
 hco_CheckEvenSpacing (NDArray in_edges, octave_idx_type counts_sz)
 {
@@ -53,10 +51,6 @@ hco_CountNormal (CD in_data, CE in_edges, octave_idx_type data_sz,
   NDArray binidx;
   octave_idx_type i, j;
 
-#if HCO_DEBUG
-  printf ("ran hco_CountNormal\n");
-#endif
-
   Matrix counts (1, counts_sz);
   counts.fill (0);
   if (nargout == 2)
@@ -102,10 +96,6 @@ hco_CountEvenSpacing (CD in_data, NDArray in_edges, octave_idx_type data_sz,
   octave_idx_type i, j;
 
   double spacing = in_edges(1) - in_edges(0);
-
-#if HCO_DEBUG
-  printf ("ran hco_CountEvenSpacing\n");
-#endif
 
   Matrix counts (1, counts_sz);
   counts.fill (0);
@@ -163,10 +153,6 @@ hco_CountEvenSpacing (CD in_data, FloatNDArray in_edges,
 
   float spacing = in_edges(1) - in_edges(0);
 
-#if HCO_DEBUG
-  printf ("ran hco_CountEvenSpacing\n");
-#endif
-
   Matrix counts (1, counts_sz);
   counts.fill (0);
   if (nargout == 2)
@@ -222,10 +208,6 @@ hco_CountEvenSpacing (CD in_data, CE in_edges, octave_idx_type data_sz,
 
   typename CE::element_type::val_type spacing = in_edges(1) - in_edges(0);
 
-#if HCO_DEBUG
-  printf ("ran hco_CountEvenSpacing\n");
-#endif
-
   Matrix counts (1, counts_sz);
   counts.fill (0);
   if (nargout == 2)
@@ -273,10 +255,6 @@ hco_CountSorted (CD in_data, CE in_edges, octave_idx_type data_sz,
 {
   NDArray binidx;
   octave_idx_type i, j;
-
-#if HCO_DEBUG
-  printf ("ran hco_CountSorted\n");
-#endif
 
   Matrix counts (1, counts_sz);
   counts.fill (0);
