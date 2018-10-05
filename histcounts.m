@@ -637,7 +637,16 @@ function edges = pickbins (dl, dh, innumbins, inbw)
     if (! isfinite (bw))
       edges = linspace (left, right, numbins + 1);
     else
-      edges = [left, left + (1:numbins-1) .* bw, right];
+      ## FIXME: For some reason small errors may occur if these steps are not
+      ##        done seperately with indexing. Perhaps a problem in underlying 
+      ##        system?
+      ##        Example: let left = -120, numbins = 100, bw = 2.45
+      ##                 p1  = left + (1:numbins-1) .* bw;
+      ##                 tmp = (1:numbins-1) .* bw;
+      ##                 p2  = left + tmp(1,:);
+      ##                 -> p1 != p2
+      tmp = (1:numbins-1) .* bw;
+      edges = [left, left + tmp(1,:), right];
     endif
     
   else

@@ -1,11 +1,18 @@
-load m7.mat
+clear
+addpath tests
+if (exist ("tests/test.mat", "file") == 0)
+  matlabscript = ["cd('" pwd "/tests'); ts = histcountstestgen; " ...
+                   "r1 = histcountstest(ts); save('test.mat', '-v7'); exit"];
+  system(["matlab -nodesktop -r \"" matlabscript "\""]);
+endif
+load tests/test.mat
 pkg load parallel
 disp ("loaded");
-r1 = pararrayfun (8, @histcountstest, ts);
+r2 = pararrayfun (8, @histcountstest, ts);
 disp ("received test results");
-[x, fts, fr1, fr2] = testequal (ts, r, r1);
-if (isempty (fts))
-  disp ("test passed");
-else
+retvals = parcellfun(8, @teststructequal, r1, r2);
+if (any (retvals))
   disp ("test failed");
+else
+  disp ("test passed");
 endif
